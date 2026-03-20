@@ -227,6 +227,47 @@ select option { background: var(--bg3); }
 /* SEC DIVIDER */
 .sec-divider { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
 
+/* MODAL RESULT ROWS */
+.modal-result-row {
+  display: grid;
+  gap: 8px;
+  align-items: center;
+  grid-template-columns: 1.4fr 70px 90px 70px 90px 60px 36px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  margin-bottom: 6px;
+}
+.modal-result-row.header {
+  background: transparent;
+  border-color: transparent;
+  padding-bottom: 2px;
+}
+.modal-result-row.header span {
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 10px;
+  color: var(--text3);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+.modal-result-row input,
+.modal-result-row select { padding: 5px 7px; font-size: 12px; }
+.modal-add-row-btn {
+  background: transparent;
+  border: 1px dashed var(--border2);
+  color: var(--text3);
+  padding: 8px;
+  cursor: pointer;
+  width: 100%;
+  font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  transition: all 0.2s;
+  margin-top: 4px;
+}
+.modal-add-row-btn:hover { border-color: var(--red); color: var(--red); }
+
 /* RESPONSIVE */
 @media (max-width: 768px) {
   header { padding: 0 16px; }
@@ -410,6 +451,30 @@ select option { background: var(--bg3); }
     <button class="btn danger" onclick="clearHistory()" style="margin-left:auto">⚠️ <span data-zh="清除所有資料" data-en="Clear All Data">清除所有資料</span></button>
   </div>
   <div class="table-wrap" id="history-table"></div>
+</div>
+
+<!-- GAME DETAIL MODAL -->
+<div id="game-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;overflow-y:auto;" onclick="closeGameModal(event)">
+  <div id="game-modal" style="background:var(--bg2);border:1px solid var(--border2);border-top:3px solid var(--red);max-width:900px;margin:40px auto;padding:28px;position:relative;" onclick="event.stopPropagation()">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:14px;">
+      <div id="modal-title" style="font-family:'Teko',sans-serif;font-size:26px;font-weight:600;color:var(--white);letter-spacing:2px;"></div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn" id="modal-save-btn" onclick="saveGameEdit()">💾 儲存修改</button>
+        <button class="btn outline" onclick="closeGameModal()">關閉</button>
+      </div>
+    </div>
+    <!-- 比賽基本資訊 -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+      <div class="form-group"><label>比賽日期</label><input type="date" id="modal-date"></div>
+      <div class="form-group"><label>賽季</label><select id="modal-season"><option value="2025">2025</option><option value="2024">2024</option></select></div>
+      <div class="form-group"><label>場次</label><select id="modal-session"><option value="1">Session 1</option><option value="2">Session 2</option><option value="3">Session 3</option><option value="4">Session 4</option></select></div>
+      <div class="form-group"><label>報名費</label><input type="number" id="modal-entry-fee"></div>
+      <div class="form-group"><label>公積金</label><input type="number" id="modal-pool"></div>
+    </div>
+    <!-- 選手成績 -->
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">選手成績</div>
+    <div id="modal-results"></div>
+  </div>
 </div>
 
 <!-- CONFIG -->
@@ -959,13 +1024,163 @@ function renderHistory() {
   if (player !== 'all') games = games.filter(g => g.results.some(r => r.playerId === player));
   const cont = document.getElementById('history-table');
   if (!games.length) { cont.innerHTML = '<div style="padding:20px;color:var(--text3)">尚無比賽紀錄</div>'; return; }
-  cont.innerHTML = `<table><thead><tr><th>日期</th><th>賽季</th><th>場次</th><th>選手數</th><th>獎金池</th><th>冠軍</th><th>亞軍</th><th>季軍</th><th>操作</th></tr></thead><tbody>` +
+  cont.innerHTML = `<table><thead><tr>
+    <th>日期</th><th>賽季</th><th>場次</th><th>選手數</th><th>獎金池</th>
+    <th>冠軍</th><th>亞軍</th><th>季軍</th><th>操作</th>
+  </tr></thead><tbody>` +
     games.map(g => {
       const res = [...g.results].sort((a,b)=>a.rank-b.rank);
       const get = (rank) => { const r = res.find(x=>x.rank===rank); return r ? (DB.players.find(p=>p.id===r.playerId)?.name||'?') : '—'; };
       const totalPrize = res.reduce((s,r)=>s+r.prize,0);
-      return `<tr><td>${g.date} <span class="session-badge">S${g.session||1}</span></td><td>${g.season}</td><td>S${g.session||1}</td><td>${res.length}</td><td>$${totalPrize.toLocaleString()}</td><td>🥇 ${get(1)}</td><td>🥈 ${get(2)}</td><td>🥉 ${get(3)}</td><td><button class="btn danger" onclick="deleteGame('${g.id}')" style="padding:4px 10px;font-size:11px">刪除</button></td></tr>`;
+      return `<tr>
+        <td>${g.date} <span class="session-badge">S${g.session||1}</span></td>
+        <td>${g.season}</td>
+        <td>S${g.session||1}</td>
+        <td>${res.length}</td>
+        <td>$${totalPrize.toLocaleString()}</td>
+        <td>🥇 ${get(1)}</td><td>🥈 ${get(2)}</td><td>🥉 ${get(3)}</td>
+        <td style="display:flex;gap:5px;">
+          <button class="btn secondary" onclick="openGameModal('${g.id}')" style="padding:4px 10px;font-size:11px">✏️ 查看/編輯</button>
+          <button class="btn danger" onclick="deleteGame('${g.id}')" style="padding:4px 10px;font-size:11px">刪除</button>
+        </td>
+      </tr>`;
     }).join('') + '</tbody></table>';
+}
+
+// ── 歷史紀錄 Modal ─────────────────────────────────────────
+let editingGameId = null;
+let modalResultRows = []; // [{rowId, playerId, rank, buyIn, rebuys, prize, dealt}]
+
+function openGameModal(gameId) {
+  const g = DB.games.find(x => x.id === gameId);
+  if (!g) return;
+  editingGameId = gameId;
+
+  // 填入基本資訊
+  document.getElementById('modal-title').textContent = `${g.date}  S${g.session||1}  ${g.season}`;
+  document.getElementById('modal-date').value = g.date;
+  document.getElementById('modal-season').value = g.season;
+  document.getElementById('modal-session').value = g.session || '1';
+  document.getElementById('modal-entry-fee').value = g.entryFee || 0;
+  document.getElementById('modal-pool').value = g.pool || 0;
+
+  // 建立選手成績列
+  modalResultRows = g.results.map((r, i) => ({ rowId: 'mr_' + i + '_' + Date.now(), ...r }));
+  renderModalResults();
+
+  document.getElementById('game-modal-overlay').style.display = 'block';
+  document.body.style.overflow = 'hidden';
+}
+
+function closeGameModal(e) {
+  if (e && e.target !== document.getElementById('game-modal-overlay')) return;
+  document.getElementById('game-modal-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+  editingGameId = null;
+}
+
+function renderModalResults() {
+  const cont = document.getElementById('modal-results');
+  const rankOpts = Array.from({length:20},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('');
+  const buyInOpts = Array.from({length:20},(_,i)=>`<option value="${(i+1)*100}">${(i+1)*100}</option>`).join('');
+  const rebuyOpts = Array.from({length:21},(_,i)=>`<option value="${i}">${i}</option>`).join('');
+
+  cont.innerHTML = `
+    <div class="modal-result-row header">
+      <span>選手</span><span>名次</span><span>買入</span><span>重買</span><span>獎金</span><span>發牌</span><span></span>
+    </div>` +
+    modalResultRows.map(r => {
+      const p = DB.players.find(x => x.id === r.playerId);
+      const playerOpts = DB.players.map(pl =>
+        `<option value="${pl.id}" ${pl.id === r.playerId ? 'selected' : ''}>${pl.name}</option>`
+      ).join('');
+      return `<div class="modal-result-row" id="${r.rowId}">
+        <select onchange="modalUpdateRow('${r.rowId}','playerId',this.value)">
+          <option value="">— 選擇 —</option>${playerOpts}
+        </select>
+        <select onchange="modalUpdateRow('${r.rowId}','rank',this.value)">
+          <option value="">名次</option>${rankOpts.replace(`value="${r.rank}"`, `value="${r.rank}" selected`)}
+        </select>
+        <select onchange="modalUpdateRow('${r.rowId}','buyIn',this.value)">
+          ${buyInOpts.replace(`value="${r.buyIn}"`, `value="${r.buyIn}" selected`)}
+        </select>
+        <select onchange="modalUpdateRow('${r.rowId}','rebuys',this.value)">
+          ${rebuyOpts.replace(`value="${r.rebuys}"`, `value="${r.rebuys}" selected`)}
+        </select>
+        <input type="number" value="${r.prize}" oninput="modalUpdateRow('${r.rowId}','prize',this.value)" style="width:100%;">
+        <select onchange="modalUpdateRow('${r.rowId}','dealt',this.value)">
+          <option value="0" ${!r.dealt?'selected':''}>✗</option>
+          <option value="1" ${r.dealt?'selected':''}>✓</option>
+        </select>
+        <button class="remove-btn" onclick="modalRemoveRow('${r.rowId}')">×</button>
+      </div>`;
+    }).join('') +
+    `<button class="modal-add-row-btn" onclick="modalAddRow()">+ 新增選手</button>`;
+}
+
+function modalUpdateRow(rowId, field, value) {
+  const row = modalResultRows.find(r => r.rowId === rowId);
+  if (!row) return;
+  if (field === 'rank' || field === 'rebuys' || field === 'dealt') row[field] = parseInt(value) || 0;
+  else if (field === 'buyIn' || field === 'prize') row[field] = parseFloat(value) || 0;
+  else row[field] = value;
+  // auto-update gender when player changes
+  if (field === 'playerId') {
+    const p = DB.players.find(x => x.id === value);
+    if (p) row.gender = p.gender;
+  }
+}
+
+function modalRemoveRow(rowId) {
+  modalResultRows = modalResultRows.filter(r => r.rowId !== rowId);
+  renderModalResults();
+}
+
+function modalAddRow() {
+  modalResultRows.push({
+    rowId: 'mr_new_' + Date.now(),
+    playerId: '', gender: 'M', rank: 0,
+    buyIn: 500, rebuys: 0, prize: 0, dealt: 0,
+    huWins: 0, huLosses: 0
+  });
+  renderModalResults();
+}
+
+function saveGameEdit() {
+  const g = DB.games.find(x => x.id === editingGameId);
+  if (!g) return;
+
+  // 驗證
+  const invalid = modalResultRows.find(r => !r.playerId || !r.rank);
+  if (invalid) return notify('請確認所有選手都有選取名次', true);
+
+  // 更新基本資訊
+  g.date    = document.getElementById('modal-date').value;
+  g.season  = document.getElementById('modal-season').value;
+  g.session = document.getElementById('modal-session').value;
+  g.entryFee = parseFloat(document.getElementById('modal-entry-fee').value) || 0;
+  g.pool    = parseFloat(document.getElementById('modal-pool').value) || 0;
+
+  // 更新成績，重新計算 huWins/huLosses
+  g.results = modalResultRows.map(r => ({
+    playerId: r.playerId,
+    gender: r.gender || (DB.players.find(p=>p.id===r.playerId)?.gender || 'M'),
+    rank: parseInt(r.rank),
+    buyIn: parseFloat(r.buyIn) || 0,
+    rebuys: parseInt(r.rebuys) || 0,
+    prize: parseFloat(r.prize) || 0,
+    dealt: parseInt(r.dealt) || 0,
+    huWins: r.rank === 1 ? 1 : 0,
+    huLosses: r.rank === 2 ? 1 : 0,
+  }));
+
+  saveDB();
+  renderHistory();
+  renderDashboard();
+  notify('✅ 比賽紀錄已更新！');
+  document.getElementById('game-modal-overlay').style.display = 'none';
+  document.body.style.overflow = '';
+  editingGameId = null;
 }
 function deleteGame(id) {
   if (!confirm('確定刪除此比賽紀錄？')) return;
@@ -1202,6 +1417,20 @@ window.onload = () => {
       else notify('⚠️ 無法同步：' + (msg||''), true);
     });
   }
+  // 每 30 秒自動輪詢一次（靜默，不顯示通知）
+  setInterval(() => {
+    if (!DB.sheetUrl) return;
+    syncFromSheet((ok) => {
+      if (ok) {
+        // 只在資料有變化時顯示通知（比較 games 數量）
+        const label = document.getElementById('last-update-label');
+        if (label) {
+          const now = new Date();
+          label.textContent = '上次同步：' + now.toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+        }
+      }
+    });
+  }, 30000);
   if (DB.players.length === 0) {
     // 10 sample players
     DB.players = [
