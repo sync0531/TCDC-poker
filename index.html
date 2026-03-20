@@ -188,6 +188,73 @@ select option { background: var(--bg3); }
 .add-player-btn { background: transparent; border: 1px dashed var(--border2); color: var(--text3); padding: 10px; cursor: pointer; width: 100%; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.2s; }
 .add-player-btn:hover { border-color: var(--red); color: var(--red); }
 
+/* RANK SLOTS (新版登錄) */
+.rank-slot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  padding: 10px 14px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+.rank-slot .rank-badge {
+  font-family: 'Teko', sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  width: 32px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.rank-slot .rank-badge.r1 { color: #FFD700; }
+.rank-slot .rank-badge.r2 { color: #C0C0C0; }
+.rank-slot .rank-badge.r3 { color: #CD7F32; }
+.rank-slot .rank-badge.rn { color: var(--text3); }
+.rank-slot select.player-sel-slot {
+  flex: 1; min-width: 120px; font-size: 14px; padding: 8px 10px;
+}
+.rank-slot .buyin-ctrl {
+  display: flex; align-items: center; gap: 0;
+  border: 1px solid var(--border2);
+}
+.rank-slot .buyin-ctrl button {
+  background: var(--bg4); border: none; color: var(--white);
+  width: 32px; height: 36px; font-size: 18px; cursor: pointer;
+  font-family: 'Teko', sans-serif; line-height: 1; transition: background 0.15s;
+  flex-shrink: 0;
+}
+.rank-slot .buyin-ctrl button:hover { background: var(--red); }
+.rank-slot .buyin-ctrl .buyin-display {
+  background: var(--bg3); color: var(--white);
+  font-family: 'Teko', sans-serif; font-size: 16px; font-weight: 600;
+  min-width: 70px; text-align: center; padding: 0 6px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-left: 1px solid var(--border); border-right: 1px solid var(--border);
+}
+.rank-slot .prize-display {
+  font-family: 'Teko', sans-serif; font-size: 18px; font-weight: 600;
+  min-width: 80px; text-align: right;
+}
+.rank-slot .prize-display.r1c { color: #FFD700; }
+.rank-slot .prize-display.r2c { color: #C0C0C0; }
+.rank-slot .prize-display.r3c { color: #CD7F32; }
+.rank-slot .prize-display.rnc { color: var(--text3); }
+.rank-slot .dealt-check {
+  display: flex; align-items: center; gap: 6px;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 12px;
+  color: var(--text3); cursor: pointer; user-select: none;
+  white-space: nowrap;
+}
+.rank-slot .dealt-check input[type="checkbox"] {
+  width: 16px; height: 16px; accent-color: var(--red); cursor: pointer;
+  padding: 0; border: none; background: transparent;
+}
+@media (max-width: 768px) {
+  .rank-slot { gap: 8px; }
+  .rank-slot select.player-sel-slot { min-width: 100px; }
+}
+
 /* LB TABS */
 .lb-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
 .lb-tab { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 7px 20px; cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.2s; }
@@ -510,69 +577,74 @@ select option { background: var(--bg3); }
 <div class="section" id="sec-entry">
   <div class="form-section">
     <h2 data-zh="🎮 登錄新比賽" data-en="🎮 Enter New Game">🎮 登錄新比賽</h2>
-    <div class="form-grid">
+
+    <!-- 基本資訊 -->
+    <div class="form-grid" style="margin-bottom:20px;">
       <div class="form-group">
-        <label data-zh="比賽日期" data-en="Date">比賽日期</label>
+        <label>比賽日期</label>
         <input type="date" id="game-date">
       </div>
       <div class="form-group">
-        <label data-zh="賽季" data-en="Season">賽季</label>
+        <label>賽季</label>
         <select id="game-season"><option value="2025">2025</option><option value="2024">2024</option></select>
       </div>
       <div class="form-group">
-        <label data-zh="場次" data-en="Session">場次</label>
+        <label>場次</label>
         <select id="game-session">
           <option value="1">Session 1</option><option value="2">Session 2</option>
           <option value="3">Session 3</option><option value="4">Session 4</option>
         </select>
       </div>
       <div class="form-group">
-        <label data-zh="買入金額 (每人)" data-en="Buy-in per player">買入金額 (每人)</label>
-        <input type="number" id="game-entry-fee" placeholder="500" value="500" oninput="updatePrizePreview()">
+        <label>買入金額（每份）</label>
+        <input type="number" id="game-entry-fee" placeholder="500" value="500" oninput="rebuildRankSlots()">
+      </div>
+      <div class="form-group">
+        <label>參賽人數</label>
+        <select id="game-player-count" onchange="rebuildRankSlots()">
+          <option value="">— 選擇人數 —</option>
+          <option value="4">4 人</option>
+          <option value="5">5 人</option>
+          <option value="6">6 人</option>
+          <option value="7">7 人</option>
+          <option value="8">8 人</option>
+          <option value="9">9 人</option>
+          <option value="10">10 人</option>
+          <option value="11">11 人</option>
+          <option value="12">12 人</option>
+          <option value="13">13 人</option>
+          <option value="14">14 人</option>
+          <option value="15">15 人</option>
+          <option value="16">16 人</option>
+          <option value="17">17 人</option>
+          <option value="18">18 人</option>
+          <option value="19">19 人</option>
+          <option value="20">20 人</option>
+        </select>
       </div>
     </div>
 
-    <!-- 獎金預覽區 -->
-    <div id="prize-preview" style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--red);padding:14px 18px;margin-bottom:16px;display:none;">
-      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">💰 獎金預覽（自動計算）</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;">
-        <div style="text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:4px;">總獎金池</div>
-          <div id="preview-total" style="font-family:'Teko',sans-serif;font-size:24px;color:var(--white);font-weight:600;">$0</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#FFD700;letter-spacing:1px;margin-bottom:4px;">🥇 第1名 (60%)</div>
-          <div id="preview-1st" style="font-family:'Teko',sans-serif;font-size:24px;color:#FFD700;font-weight:600;">$0</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#C0C0C0;letter-spacing:1px;margin-bottom:4px;">🥈 第2名 (30%)</div>
-          <div id="preview-2nd" style="font-family:'Teko',sans-serif;font-size:24px;color:#C0C0C0;font-weight:600;">$0</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#CD7F32;letter-spacing:1px;margin-bottom:4px;">🥉 第3名 (10%)</div>
-          <div id="preview-3rd" style="font-family:'Teko',sans-serif;font-size:24px;color:#CD7F32;font-weight:600;">$0</div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:4px;">🏦 公積金 (10%)</div>
-          <div id="preview-pool" style="font-family:'Teko',sans-serif;font-size:24px;color:var(--text2);font-weight:600;">$0</div>
+    <!-- 名次輸入區 -->
+    <div id="rank-slots-wrap" style="display:none;">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;">依名次選擇選手 &amp; 設定買入份數</div>
+      <div id="rank-slots"></div>
+
+      <!-- 獎金預覽 -->
+      <div id="prize-preview" style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--red);padding:14px 18px;margin:16px 0;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">💰 獎金預覽（自動計算）</div>
+        <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:10px;">
+          <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:4px;">總獎金池</div><div id="preview-total" style="font-family:'Teko',sans-serif;font-size:24px;color:var(--white);font-weight:600;">$0</div></div>
+          <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#FFD700;letter-spacing:1px;margin-bottom:4px;">🥇 第1名 (60%)</div><div id="preview-1st" style="font-family:'Teko',sans-serif;font-size:24px;color:#FFD700;font-weight:600;">$0</div></div>
+          <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#C0C0C0;letter-spacing:1px;margin-bottom:4px;">🥈 第2名 (30%)</div><div id="preview-2nd" style="font-family:'Teko',sans-serif;font-size:24px;color:#C0C0C0;font-weight:600;">$0</div></div>
+          <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:#CD7F32;letter-spacing:1px;margin-bottom:4px;">🥉 第3名 (10%)</div><div id="preview-3rd" style="font-family:'Teko',sans-serif;font-size:24px;color:#CD7F32;font-weight:600;">$0</div></div>
+          <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1px;margin-bottom:4px;">🏦 公積金 (10%)</div><div id="preview-pool" style="font-family:'Teko',sans-serif;font-size:24px;color:var(--text2);font-weight:600;">$0</div></div>
         </div>
       </div>
-    </div>
-    <div style="margin-bottom:10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase" data-zh="選手成績 (依名次填入，第一名填1)" data-en="Player Results (1 = 1st place)">選手成績 (依名次填入，第一名填1)</div>
-    <div class="player-row header">
-      <span data-zh="選手名稱" data-en="Player">選手名稱</span>
-      <span data-zh="名次" data-en="Rank">名次</span>
-      <span data-zh="買入" data-en="Buy-in">買入</span>
-      <span data-zh="重買次數" data-en="Rebuys">重買次</span>
-      <span data-zh="獎金(自動)" data-en="Prize(Auto)">獎金(自動)</span>
-      <span data-zh="有發牌" data-en="Dealt">發牌</span>
-      <span></span>
-    </div>
-    <div class="player-entries" id="player-entries"></div>
-    <button class="add-player-btn" onclick="addPlayerRow()">+ <span data-zh="新增選手" data-en="Add Player">新增選手</span></button>
-    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">
-      <button class="btn" onclick="saveGame()">💾 <span data-zh="儲存比賽" data-en="Save Game">儲存比賽</span></button>
-      <button class="btn outline" onclick="clearEntry()">🗑️ <span data-zh="清除" data-en="Clear">清除</span></button>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn" onclick="saveGame()">💾 儲存比賽</button>
+        <button class="btn outline" onclick="clearEntry()">🗑️ 清除</button>
+      </div>
     </div>
   </div>
   <div class="form-section">
@@ -1279,107 +1351,96 @@ function savePlayerEdit(id) {
 }
 
 let playerRows = [];
-function addPlayerRow() {
-  const id = Date.now().toString();
-  playerRows.push(id);
-  const cont = document.getElementById('player-entries');
-  const div = document.createElement('div');
-  div.className = 'player-row';
-  div.id = 'prow-' + id;
-  div.innerHTML = `
-    <select class="player-sel" data-row="${id}">
-      <option value="">— 選擇選手 —</option>
-      ${DB.players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
-    </select>
-    <select data-field="rank" data-row="${id}" onchange="updatePrizePreview()">
-      <option value="">名次</option>
-      ${Array.from({length:20},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}
-    </select>
-    <select data-field="buyIn" data-row="${id}" onchange="updatePrizePreview()">
-      ${Array.from({length:20},(_,i)=>`<option value="${(i+1)*100}" ${(i+1)*100===500?'selected':''}>${(i+1)*100}</option>`).join('')}
-    </select>
-    <select data-field="rebuys" data-row="${id}" onchange="updatePrizePreview()">
-      ${Array.from({length:21},(_,i)=>`<option value="${i}" ${i===0?'selected':''}>${i}</option>`).join('')}
-    </select>
-    <div data-field="prize" data-row="${id}" style="background:var(--bg2);border:1px solid var(--border);padding:6px 8px;font-size:13px;color:#FFD700;font-family:'Teko',sans-serif;font-size:16px;text-align:center;font-weight:600;">—</div>
-    <select data-field="dealt" data-row="${id}">
-      <option value="0" selected>✗</option>
-      <option value="1">✓</option>
-    </select>
-    <button class="remove-btn" onclick="removeRow('${id}')">×</button>
-  `;
-  cont.appendChild(div);
+function addPlayerRow() {} // compatibility stub
+function removeRow(id) {}  // compatibility stub
+
+// ── 新版登錄：以名次為主軸 ──────────────────────────────
+function rebuildRankSlots() {
+  const n = parseInt(document.getElementById('game-player-count').value) || 0;
+  const wrap = document.getElementById('rank-slots-wrap');
+  const cont = document.getElementById('rank-slots');
+  if (!n) { wrap.style.display = 'none'; cont.innerHTML = ''; return; }
+  wrap.style.display = 'block';
+
+  // 保留已填入的選手選擇
+  const prev = {};
+  cont.querySelectorAll('.rank-slot').forEach(slot => {
+    const rank = slot.dataset.rank;
+    const sel  = slot.querySelector('.player-sel-slot');
+    const bd   = slot.querySelector('.buyin-display');
+    const cb   = slot.querySelector('input[type="checkbox"]');
+    if (sel) prev[rank] = { playerId: sel.value, count: parseInt(bd?.dataset.count)||1, dealt: cb?.checked||false };
+  });
+
+  const rankColors = ['r1','r2','r3'];
+  const rankLabels = ['🥇','🥈','🥉'];
+  const entryFee   = parseFloat(document.getElementById('game-entry-fee').value) || 500;
+
+  cont.innerHTML = Array.from({length: n}, (_, i) => {
+    const rank = i + 1;
+    const cls  = rank <= 3 ? rankColors[rank-1] : 'rn';
+    const lbl  = rank <= 3 ? rankLabels[rank-1] : rank;
+    const p    = prev[rank] || {};
+    const cnt  = p.count || 1;
+    const dealtAttr = p.dealt ? 'checked' : '';
+    const selPid = p.playerId || '';
+    return `<div class="rank-slot" data-rank="${rank}">
+      <span class="rank-badge ${cls}">${lbl}</span>
+      <select class="player-sel-slot" onchange="updatePrizePreview()">
+        <option value="">— 選擇選手 —</option>
+        ${DB.players.map(pl=>`<option value="${pl.id}" ${pl.id===selPid?'selected':''}>${pl.name}</option>`).join('')}
+      </select>
+      <div class="buyin-ctrl">
+        <button onclick="adjustBuyin(${rank},-1)">−</button>
+        <div class="buyin-display" data-count="${cnt}" data-rank="${rank}">×${cnt}<br><span style="font-size:11px;color:var(--text3)">$${(cnt*entryFee).toLocaleString()}</span></div>
+        <button onclick="adjustBuyin(${rank},1)">+</button>
+      </div>
+      <div class="prize-display ${rank<=3?rankColors[rank-1]+'c':'rnc'}" data-prize-rank="${rank}">—</div>
+      <label class="dealt-check"><input type="checkbox" ${dealtAttr}> 發牌</label>
+    </div>`;
+  }).join('');
+
   updatePrizePreview();
 }
-function removeRow(id) {
-  playerRows = playerRows.filter(r => r !== id);
-  const el = document.getElementById('prow-' + id);
-  if (el) el.remove();
+
+function adjustBuyin(rank, delta) {
+  const slot = document.querySelector(`.rank-slot[data-rank="${rank}"]`);
+  if (!slot) return;
+  const display  = slot.querySelector('.buyin-display');
+  const entryFee = parseFloat(document.getElementById('game-entry-fee').value) || 500;
+  let count = Math.max(1, (parseInt(display.dataset.count)||1) + delta);
+  display.dataset.count = count;
+  display.innerHTML = `×${count}<br><span style="font-size:11px;color:var(--text3)">$${(count*entryFee).toLocaleString()}</span>`;
   updatePrizePreview();
 }
 
 function calcGamePrizes() {
-  // 計算每位選手的獎金
-  // 規則：每人買入 * (1 + 重買次數) → 加總 = 總獎金池 * 90%（10%為公積金）
-  // 第1名 60%、第2名 30%、第3名 10% （均從可分配獎金池計算）
   const entryFee = parseFloat(document.getElementById('game-entry-fee').value) || 500;
-  let totalPool = 0;
-  playerRows.forEach(id => {
-    const row = document.getElementById('prow-' + id);
-    if (!row) return;
-    const buyIn = parseFloat(row.querySelector('[data-field="buyIn"]').value) || entryFee;
-    const rebuys = parseInt(row.querySelector('[data-field="rebuys"]').value) || 0;
-    totalPool += buyIn * (1 + rebuys);
+  let totalPool  = 0;
+  document.querySelectorAll('.rank-slot').forEach(slot => {
+    const cnt = parseInt(slot.querySelector('.buyin-display')?.dataset.count)||1;
+    totalPool += cnt * entryFee;
   });
-  const poolFund   = Math.round(totalPool * 0.10); // 10% 公積金
-  const prizePool  = totalPool - poolFund;          // 90% 可分配
-  const prize1 = Math.round(prizePool * (6/9));     // 60% of total = 6/9 of prizePool
-  const prize2 = Math.round(prizePool * (3/9));     // 30%
-  const prize3 = Math.round(prizePool * (1/9));     // 10%
-  // 注意：60+30+10=100% of 90% of total
-  // 實際：prize1=total*60%*90%? No - per spec: 60% of total is 1st, 30% 2nd, 10% 3rd, 10% pool
-  // Re-read: 每次買入500，累計總金額 60%=1st, 30%=2nd, 10%=3rd, 10%=公積金 → 總計110%?
-  // Correct interpretation: from totalPool, 10% → pool, remaining 90% → prizes (60:30:10 ratio of 90%)
-  // But spec says 60%+30%+10%+10% = 110% which doesn't work
-  // Most natural: totalPool * 60% = 1st, *30% = 2nd, *10% = 3rd, separate 10% = pool
-  // That gives 100% prizes + 10% pool extracted first → pool = totalPool*10/110, prizes = totalPool*100/110
-  // Simpler: prize pool is all buy-ins. Pool fund taken separately at end.
-  // Let's do: totalPool → pool fund = 10%, distributeable = 90%
-  // 1st = 90% * (60/100) = 54%, 2nd = 27%, 3rd = 9%... 
-  // OR: just use the exact stated percentages of the TOTAL pool:
-  // 1st=60%, 2nd=30%, 3rd=10%, pool=10% → sums to 110%
-  // Most likely intent: from total, extract 10% for pool first, then split remaining 90% as 60:30:10
-  // i.e. 1st=60%*90%=54% of total, etc. But that contradicts "60% is 1st prize"
-  // Best interpretation: 1st=60%, 2nd=30%, 3rd=10% of the PRIZE pool (90% of total)
-  // So 1st = totalPool * 0.9 * 0.6, 2nd = *0.9*0.3, 3rd = *0.9*0.1, poolFund = totalPool*0.1
-  // 規則：總池 10%→公積金，60%→1st，30%→2nd，10%→3rd
-  return { totalPool, poolFund,
-    p1: Math.round(totalPool * 0.6),
-    p2: Math.round(totalPool * 0.3),
-    p3: Math.round(totalPool * 0.1) };
+  const poolFund = Math.round(totalPool * 0.1);
+  return { totalPool, poolFund, p1: Math.round(totalPool*0.6), p2: Math.round(totalPool*0.3), p3: Math.round(totalPool*0.1) };
 }
 
 function updatePrizePreview() {
-  const preview = document.getElementById('prize-preview');
-  if (!playerRows.length) { preview.style.display='none'; return; }
-  preview.style.display = 'block';
+  const slots = document.querySelectorAll('.rank-slot');
+  if (!slots.length) return;
   const { totalPool, poolFund, p1, p2, p3 } = calcGamePrizes();
   document.getElementById('preview-total').textContent = '$' + totalPool.toLocaleString();
   document.getElementById('preview-1st').textContent   = '$' + p1.toLocaleString();
   document.getElementById('preview-2nd').textContent   = '$' + p2.toLocaleString();
   document.getElementById('preview-3rd').textContent   = '$' + p3.toLocaleString();
   document.getElementById('preview-pool').textContent  = '$' + poolFund.toLocaleString();
-  // 更新每個選手列的獎金顯示
-  playerRows.forEach(id => {
-    const row = document.getElementById('prow-' + id);
-    if (!row) return;
-    const rankSel = row.querySelector('[data-field="rank"]');
-    const prizeDiv = row.querySelector('[data-field="prize"]');
-    if (!rankSel || !prizeDiv) return;
-    const rank = parseInt(rankSel.value) || 0;
-    const prize = rank===1 ? p1 : rank===2 ? p2 : rank===3 ? p3 : 0;
-    prizeDiv.textContent = prize > 0 ? '$' + prize.toLocaleString() : '—';
-    prizeDiv.dataset.value = prize;
+  // 更新每個名次的獎金顯示
+  slots.forEach(slot => {
+    const rank = parseInt(slot.dataset.rank);
+    const pd   = slot.querySelector('[data-prize-rank]');
+    if (!pd) return;
+    const prize = rank===1?p1:rank===2?p2:rank===3?p3:0;
+    pd.textContent = prize > 0 ? '$' + prize.toLocaleString() : '—';
   });
 }
 function updatePlayerDropdowns() {
@@ -1390,49 +1451,49 @@ function updatePlayerDropdowns() {
   });
 }
 function clearEntry() {
-  playerRows = [];
-  document.getElementById('player-entries').innerHTML = '';
-  document.getElementById('game-date').value = '';
+  document.getElementById('game-player-count').value = '';
+  document.getElementById('rank-slots').innerHTML = '';
+  document.getElementById('rank-slots-wrap').style.display = 'none';
+  document.getElementById('game-date').value = new Date().toISOString().slice(0,10);
 }
 function saveGame() {
   const date = document.getElementById('game-date').value;
   if (!date) return notify('請選擇比賽日期', true);
-  const season = document.getElementById('game-season').value;
-  const session = document.getElementById('game-session').value;
-  const entryFee = parseFloat(document.getElementById('game-entry-fee').value) || 0;
-  const { poolFund: pool } = calcGamePrizes(); // 公積金自動計算（總買入10%）
+  const n = parseInt(document.getElementById('game-player-count').value) || 0;
+  if (!n) return notify('請選擇參賽人數', true);
+  const season   = document.getElementById('game-season').value;
+  const session  = document.getElementById('game-session').value;
+  const entryFee = parseFloat(document.getElementById('game-entry-fee').value) || 500;
+  const prizes   = calcGamePrizes();
+
   const results = [];
   let ok = true;
-  playerRows.forEach(id => {
-    const row = document.getElementById('prow-' + id);
-    if (!row) return;
-    const playerId = row.querySelector('.player-sel').value;
-    const rank = parseInt(row.querySelector('[data-field="rank"]').value) || 0;
-    if (!playerId || !rank) { ok = false; return; }
-    const p = DB.players.find(x => x.id === playerId);
+  document.querySelectorAll('.rank-slot').forEach(slot => {
+    const rank     = parseInt(slot.dataset.rank);
+    const playerId = slot.querySelector('.player-sel-slot').value;
+    if (!playerId) { ok = false; return; }
+    const p     = DB.players.find(x => x.id === playerId);
+    const cnt   = parseInt(slot.querySelector('.buyin-display').dataset.count) || 1;
+    const buyIn = entryFee;          // 每份金額
+    const rebuys = cnt - 1;          // 份數 - 1 = 重買次數
+    const dealt = slot.querySelector('input[type="checkbox"]').checked ? 1 : 0;
+    const prize = rank===1 ? prizes.p1 : rank===2 ? prizes.p2 : rank===3 ? prizes.p3 : 0;
     results.push({
       playerId, gender: p ? p.gender : 'M', rank,
-      buyIn: parseFloat(row.querySelector('[data-field="buyIn"]').value) || 0,
-      rebuys: parseInt(row.querySelector('[data-field="rebuys"]').value) || 0,
-      prize: (() => {
-        const div = row.querySelector('[data-field="prize"]');
-        return parseFloat(div?.dataset?.value || div?.value || 0) || 0;
-      })(),
-      dealt: parseInt(row.querySelector('[data-field="dealt"]').value) || 0,
-      huWins: rank === 1 ? 1 : 0,
-      huLosses: rank === 2 ? 1 : 0,
+      buyIn, rebuys, prize, dealt,
+      huWins:   rank===1 ? 1 : 0,
+      huLosses: rank===2 ? 1 : 0,
     });
   });
-  if (!ok || !results.length) return notify('請填寫所有選手的名次', true);
-  const prizes = calcGamePrizes();
-  // 把獎金寫進各選手 result（確保以最終計算值覆蓋）
-  results.forEach(r => {
-    r.prize = r.rank===1 ? prizes.p1 : r.rank===2 ? prizes.p2 : r.rank===3 ? prizes.p3 : 0;
-  });
+
+  if (!ok || results.length !== n) return notify('請確認所有名次都已選擇選手', true);
+  // 檢查有無重複選手
+  const ids = results.map(r => r.playerId);
+  if (new Set(ids).size !== ids.length) return notify('有選手重複出現，請確認', true);
+
   DB.games.push({
     id: Date.now().toString(), date, session, season, entryFee,
-    pool: prizes.poolFund,
-    totalPool: prizes.totalPool,
+    pool: prizes.poolFund, totalPool: prizes.totalPool,
     prize1: prizes.p1, prize2: prizes.p2, prize3: prizes.p3,
     results
   });
