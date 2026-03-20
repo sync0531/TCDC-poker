@@ -838,11 +838,11 @@ function syncToSheet() {
     const rebuyRate = pGames.length>0 ? totalRebuys/pGames.length*100 : 0;
     const huRate = (huWins+huLosses)>0 ? huWins/(huWins+huLosses)*100 : 0;
     const photo  = first+second+third;
-    // 近期參賽率
-    const allDates = games.map(g=>g.date);
-    const last6 = allDates.slice(-6);
-    const recentP = last6.filter(d=>pGames.some(g=>g.date===d)).length;
-    const recentRate = last6.length ? recentP/last6.length*100 : 0;
+    // 近期參賽率（以 game.id 為單位，避免同日多場重複）
+    const sortedGIds = [...games].sort((a,b)=>a.date.localeCompare(b.date)||(a.session||1)-(b.session||1)).map(g=>g.id);
+    const last6ids = sortedGIds.slice(-6);
+    const recentP = last6ids.filter(id=>pGames.some(g=>g.id===id)).length;
+    const recentRate = last6ids.length ? recentP/last6ids.length*100 : 0;
     // MVP score
     const maxRankPts = Math.max(...DB.players.map(pl=>
       games.flatMap(g=>g.results.filter(r=>r.playerId===pl.id))
@@ -1447,8 +1447,11 @@ function computeStats(season) {
   DB.players.forEach(p => {
     stats[p.id] = { id:p.id, name:p.name, gender:p.gender, games:0, rankPts:0, totalBuyIn:0, totalRebuys:0, totalPrize:0, first:0, second:0, third:0, fourth:0, dealt:0, huWins:0, huLosses:0, allGames:[], maxSingleRebuys:0 };
   });
-  const allDates = games.map(g => g.date).sort();
-  games.forEach(g => {
+  // 以 game.id 為單位排序（避免同日多場重複計算）
+  const sortedGames = [...games].sort((a,b) => a.date.localeCompare(b.date) || (a.session||1)-(b.session||1));
+  const allGameIds = sortedGames.map(g => g.id);
+
+  sortedGames.forEach(g => {
     g.results.forEach(r => {
       if (!stats[r.playerId]) return;
       const s = stats[r.playerId];
@@ -1461,13 +1464,15 @@ function computeStats(season) {
       if (r.rank===3) s.third++;
       if (r.rank===4) s.fourth++;
       if ((r.rebuys||0) > s.maxSingleRebuys) s.maxSingleRebuys = r.rebuys||0;
-      s.allGames.push(g.date);
+      s.allGames.push(g.id); // 用 game id 追蹤，避免同日多場重複
     });
   });
-  const last6 = allDates.slice(-6);
+
+  // 近期參賽率：取最後 6 場（以 game id 為單位）
+  const last6ids = allGameIds.slice(-6);
   Object.values(stats).forEach(s => {
-    const participated = last6.filter(d => s.allGames.includes(d)).length;
-    s.recentRate = last6.length ? participated / last6.length : 0;
+    const participated = last6ids.filter(id => s.allGames.includes(id)).length;
+    s.recentRate = last6ids.length ? participated / last6ids.length : 0;
   });
   const qualified = Object.values(stats).filter(s => s.games >= 1);
   const maxRankPts = Math.max(...qualified.map(s => s.rankPts), 1);
