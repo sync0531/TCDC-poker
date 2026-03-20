@@ -825,12 +825,18 @@ function doGet(e) {
     </div>
     <div class="config-block">
       <h3 data-zh="🗂️ 匯出資料" data-en="🗂️ Export Data">🗂️ 匯出資料</h3>
-      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
         <button class="btn outline" onclick="exportJSON()">📥 匯出 JSON</button>
         <button class="btn outline" onclick="exportCSV()">📊 匯出 CSV</button>
-        <button class="btn outline" onclick="importData()">📤 匯入 JSON</button>
-        <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(event)">
       </div>
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">匯入</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn outline" onclick="importData()">📤 匯入 JSON（本機）</button>
+        <button class="btn secondary" onclick="importAndSync()">📤☁️ 匯入 JSON 並同步到 Sheets</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(event)">
+        <input type="file" id="import-sync-file" accept=".json" style="display:none" onchange="doImportAndSync(event)">
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;">「匯入並同步」需先設定 Google Sheets URL，匯入後會自動將所有資料推送到雲端。</div>
     </div>
     <div class="config-block" style="border-color:rgba(200,16,46,0.3);">
       <h3 style="color:var(--red)">🧪 測試資料</h3>
@@ -2013,8 +2019,77 @@ function importData() { document.getElementById('import-file').click(); }
 function doImport(e) {
   const file = e.target.files[0]; if (!file) return;
   const reader = new FileReader();
-  reader.onload = ev => { try { const data = JSON.parse(ev.target.result); if (!confirm('確定要匯入？現有資料將被覆蓋！')) return; DB = data; saveDB(); renderAll(); notify('資料匯入成功！'); } catch(err) { notify('匯入失敗：格式錯誤', true); } };
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!confirm('確定要匯入？現有資料將被覆蓋！')) return;
+      // 保留目前的 sheetUrl
+      const sheetUrl = DB.sheetUrl || data.sheetUrl || '';
+      DB = data;
+      DB.sheetUrl = sheetUrl;
+      saveDB(); renderAll(); notify('資料匯入成功！');
+    } catch(err) { notify('匯入失敗：格式錯誤', true); }
+  };
   reader.readAsText(file);
+}
+
+function importAndSync() {
+  if (!DB.sheetUrl) {
+    const url = document.getElementById('sheet-url').value.trim();
+    if (!url) return notify('請先設定並連結 Google Sheets URL', true);
+    DB.sheetUrl = url;
+  }
+  document.getElementById('import-sync-file').click();
+}
+
+function doImportAndSync(e) {
+  const file = e.target.files[0]; if (!file) return;
+  // Reset so same file can be re-selected
+  e.target.value = '';
+  const reader = new FileReader();
+  reader.onload = ev => {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (!confirm(`確定要匯入 ${data.games?.length||0} 場比賽、${data.players?.length||0} 位選手的資料，並同步到 Google Sheets？現有資料將被覆蓋！`)) return;
+
+      const sheetUrl = DB.sheetUrl;
+      DB = data;
+      DB.sheetUrl = sheetUrl;
+
+      // 先存 localStorage
+      localStorage.setItem('pokerDB', JSON.stringify(DB));
+      renderAll();
+      notify('⏳ 資料匯入成功，正在同步到 Google Sheets...');
+
+      // 分批推送（避免單次請求過大）
+      pushAllToSheet();
+    } catch(err) {
+      notify('匯入失敗：' + (err.message || '格式錯誤'), true);
+    }
+  };
+  reader.readAsText(file);
+}
+
+function pushAllToSheet() {
+  if (!DB.sheetUrl) return notify('未設定 Google Sheets URL', true);
+
+  // 計算進度
+  let done = 0;
+  const total = 3; // 總覽、成績明細、PokerData
+  const onDone = () => {
+    done++;
+    if (done >= total) notify('✅ 所有資料已成功同步到 Google Sheets！');
+  };
+  const onFail = (sheet) => notify(`⚠️ 工作表「${sheet}」同步失敗，請確認 Apps Script 已更新並重新部署`, true);
+
+  // 直接呼叫 syncToSheet（它會處理所有工作表）
+  try {
+    syncToSheet();
+    // syncToSheet 使用 no-cors，無法確認成功，等待後通知
+    setTimeout(() => notify('✅ 已推送到 Google Sheets（請至試算表確認）'), 3000);
+  } catch(err) {
+    notify('同步失敗：' + err.message, true);
+  }
 }
 
 function mkTable(headers, rows) {
