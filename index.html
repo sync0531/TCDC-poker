@@ -1422,18 +1422,13 @@ function calcGamePrizes() {
     totalPool += cnt * entryFee;
   });
 
-  const poolFund    = Math.round(totalPool * 0.1);   // 10% 公積金
-  const distributable = totalPool - poolFund;          // 90% 可分配
+  const poolFund      = Math.round(totalPool * 0.1);  // 固定10%公積金
+  const distributable = totalPool - poolFund;          // 90%可分配
 
-  // 按 6:3:1 分配，先無條件捨去至百位（個位+十位歸零）
-  let raw1 = distributable * 0.6;
-  let raw2 = distributable * 0.3;
-  let raw3 = distributable * 0.1;
-
-  // 無條件捨去十位數及個位數（floor to 100）
-  const p1 = Math.floor(raw1 / 100) * 100;
-  const p2 = Math.floor(raw2 / 100) * 100;
-  // 第3名 = 剩餘全部（含1st、2nd的零頭）
+  // 前兩名：無條件捨去個位+十位（floor to 百）
+  const p1 = Math.floor(distributable * 0.6 / 100) * 100;
+  const p2 = Math.floor(distributable * 0.3 / 100) * 100;
+  // 第三名：拿走所有零頭，不捨去
   const p3 = distributable - p1 - p2;
 
   return { totalPool, poolFund, p1, p2, p3 };
@@ -1928,7 +1923,7 @@ function saveGameEdit() {
   const _dist = totalPool - _pool;
   const _p1   = Math.floor(_dist * 0.6 / 100) * 100;
   const _p2   = Math.floor(_dist * 0.3 / 100) * 100;
-  const _p3   = _dist - _p1 - _p2;
+  const _p3   = _dist - _p1 - _p2; // 零頭全給第三名
   g.pool   = _pool;
   g.prize1 = _p1;
   g.prize2 = _p2;
