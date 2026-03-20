@@ -1755,9 +1755,14 @@ function renderAwards() {
     const sorted = def.fn([...arr]);
     const winner = sorted[0];
     const qualified = !def.req || (winner && winner.games >= minGames);
-    const name = winner && qualified ? winner.name : null;
-    const detail = winner && qualified ? def.fmt(winner) : null;
-    return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3>${name?`<div class="holder">${name}</div><div class="detail">${detail}</div>`:`<div class="tbd">—</div>`}<div class="desc">${def.desc}</div></div></div>`;
+    if (!winner || !qualified) {
+      return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3><div class="tbd">—</div><div class="desc">${def.desc}</div></div></div>`;
+    }
+    // 找出所有與第一名並列的選手
+    const topVal = def.fmt(winner);
+    const tied = sorted.filter(s => def.fmt(s) === topVal);
+    const names = tied.map(s => s.name).join(' / ');
+    return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3><div class="holder">${names}</div><div class="detail">${topVal}</div><div class="desc">${def.desc}</div></div></div>`;
   }).join('');
 }
 
