@@ -269,13 +269,135 @@ select option { background: var(--bg3); }
 .modal-add-row-btn:hover { border-color: var(--red); color: var(--red); }
 
 /* RESPONSIVE */
+/* ══ RESPONSIVE ══ */
+
+/* 平板 */
+@media (max-width: 900px) {
+  main { padding: 20px 16px; }
+  .mvp-grid { grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+  .mvp-card { padding: 16px 12px; }
+  .mvp-card .name { font-size: 36px; }
+  .dash-awards-grid { grid-template-columns: 1fr 1fr; }
+}
+
+/* 手機 */
 @media (max-width: 768px) {
-  header { padding: 0 16px; }
-  nav { padding: 0 12px; }
-  main { padding: 16px; }
-  .mvp-grid { grid-template-columns: 1fr; }
-  .player-row { grid-template-columns: 1fr 1fr; }
+  /* Header */
+  header { padding: 0 12px; }
+  .logo { gap: 10px; padding: 12px 0; }
+  .logo img { height: 28px !important; }
+  .logo-text h1 { font-size: 13px; letter-spacing: 2px; }
+  .logo-text p { font-size: 9px; letter-spacing: 1px; }
+  .lang-btn { padding: 5px 10px; font-size: 11px; }
+
+  /* Nav */
+  nav { padding: 0 8px; }
+  .tab { padding: 12px 12px; font-size: 11px; letter-spacing: 1px; }
+
+  /* Main */
+  main { padding: 12px; }
+
+  /* Dashboard */
+  .mvp-grid { grid-template-columns: 1fr; gap: 10px; }
+  .mvp-card { padding: 16px; }
+  .mvp-card .crown { font-size: 28px; margin-bottom: 6px; }
+  .mvp-card .title { font-size: 13px; }
+  .mvp-card .name { font-size: 36px; }
+  .mvp-card .pts { font-size: 11px; white-space: normal; }
+  .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+  .stat-card { padding: 12px; }
+  .stat-card .num { font-size: 30px; }
+  .stat-card .lbl { font-size: 10px; }
+
+  /* Top 5 tables side by side → stack */
+  div[style*="grid-template-columns:1fr 1fr"] { grid-template-columns: 1fr !important; gap: 16px !important; }
+
+  /* Awards */
+  .dash-awards-grid { grid-template-columns: 1fr !important; gap: 8px; }
+  .awards-grid { grid-template-columns: 1fr; gap: 8px; }
+  .award-card { padding: 12px 14px; }
+  .award-info h3 { font-size: 16px; }
+  .award-info .holder { font-size: 26px; }
+
+  /* Season bar */
+  .season-bar { gap: 8px; margin-bottom: 16px; }
+
+  /* Tables */
+  .table-wrap { border-radius: 0; }
+  table { font-size: 12px; }
+  th { padding: 8px 10px; font-size: 10px; }
+  td { padding: 8px 10px; }
+
+  /* Leaderboard tabs */
+  .lb-tabs { gap: 4px; margin-bottom: 12px; }
+  .lb-tab { padding: 6px 14px; font-size: 10px; }
+
+  /* Entry form */
+  .form-section { padding: 16px; margin-bottom: 14px; }
+  .form-section h2 { font-size: 13px; margin-bottom: 14px; }
+  .form-grid { grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+  /* Player entry rows → card style on mobile */
+  .player-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 10px;
+  }
   .player-row.header { display: none; }
+  .player-row select,
+  .player-row input { font-size: 14px; padding: 8px 6px; }
+  .player-row .player-sel { grid-column: 1 / -1; } /* 選手名字佔滿整行 */
+  .remove-btn { grid-column: 1 / -1; width: 100%; padding: 6px 0; }
+
+  /* Prize preview */
+  #prize-preview { padding: 12px; }
+  #prize-preview > div:last-child { grid-template-columns: 1fr 1fr !important; gap: 8px; }
+
+  /* History filters */
+  .history-filters { gap: 8px; }
+  .history-filters .btn { font-size: 11px; padding: 7px 12px; }
+
+  /* Notification */
+  .notif { right: 12px; left: 12px; top: 68px; font-size: 13px; padding: 10px 14px; }
+
+  /* Modal */
+  #game-modal {
+    margin: 0 !important;
+    min-height: 100vh;
+    border-radius: 0 !important;
+    border-left: none !important;
+    border-right: none !important;
+    padding: 16px !important;
+  }
+  #game-modal > div:first-child { flex-direction: column; gap: 10px; align-items: flex-start; }
+  #game-modal > div:first-child > div { width: 100%; justify-content: stretch; }
+  #game-modal > div:first-child > div .btn { flex: 1; text-align: center; }
+  .modal-result-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+    padding: 10px;
+  }
+  .modal-result-row.header { display: none; }
+  .modal-result-row select,
+  .modal-result-row input { font-size: 14px; padding: 7px 6px; }
+
+  /* Config */
+  .config-block { padding: 16px; }
+  .config-row { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .config-row input { width: 100%; }
+  .sheet-url-bar { flex-wrap: wrap; gap: 8px; }
+  .sheet-url-bar input { flex: 1 1 100%; }
+  .sheet-url-bar .btn { flex: 1; text-align: center; font-size: 11px; }
+  .setup-step { flex-direction: column; gap: 8px; }
+  .setup-step::before { width: 22px; height: 22px; font-size: 13px; }
+}
+
+/* 超小螢幕 (375px 以下) */
+@media (max-width: 420px) {
+  .tab { padding: 10px 8px; font-size: 10px; letter-spacing: 0.5px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .stats-grid { grid-template-columns: 1fr 1fr; }
+  .player-row { grid-template-columns: 1fr 1fr; }
 }
 </style>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
@@ -477,7 +599,7 @@ select option { background: var(--bg3); }
 </div>
 
 <!-- GAME DETAIL MODAL -->
-<div id="game-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;overflow-y:auto;" onclick="closeGameModal(event)">
+<div id="game-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:500;overflow-y:auto;-webkit-overflow-scrolling:touch;" onclick="closeGameModal(event)">
   <div id="game-modal" style="background:var(--bg2);border:1px solid var(--border2);border-top:3px solid var(--red);max-width:900px;margin:40px auto;padding:28px;position:relative;" onclick="event.stopPropagation()">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:14px;">
       <div id="modal-title" style="font-family:'Teko',sans-serif;font-size:26px;font-weight:600;color:var(--white);letter-spacing:2px;"></div>
