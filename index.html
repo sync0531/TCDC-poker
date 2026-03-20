@@ -495,20 +495,77 @@ select option { background: var(--bg3); }
         <div class="setup-step">
           <div class="content">
             <h4 data-zh="貼上以下程式碼" data-en="Paste this code">貼上以下程式碼</h4>
-            <div class="code-box" id="gas-code">function doPost(e) {
+            <div class="code-box" id="gas-code">// ── TCDC Poker Apps Script v2 (支援顏色格式) ──
+
+function doPost(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var data = JSON.parse(e.postData.contents);
   var sheet = ss.getSheetByName(data.sheet) || ss.insertSheet(data.sheet);
-  if (data.action === 'append') { sheet.appendRow(data.row); }
-  else if (data.action === 'write') { sheet.clearContents(); data.rows.forEach(function(r){ sheet.appendRow(r); }); }
-  return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+
+  if (data.action === 'write_formatted') {
+    // 支援顏色格式的完整寫入
+    sheet.clearContents();
+    sheet.clearFormats();
+
+    var rows = data.rows;
+    if (!rows || !rows.length) {
+      return ContentService.createTextOutput(JSON.stringify({ok:true}))
+        .setMimeType(ContentService.MimeType.JSON);
+    }
+
+    // 寫入所有資料
+    var values = rows.map(function(r) {
+      return r.map(function(c) { return c.v !== undefined ? c.v : c; });
+    });
+    sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
+
+    // 套用顏色（逐列處理）
+    rows.forEach(function(row, ri) {
+      row.forEach(function(cell, ci) {
+        if (cell && cell.bg) {
+          sheet.getRange(ri+1, ci+1).setBackground(cell.bg);
+        }
+        if (cell && cell.bold) {
+          sheet.getRange(ri+1, ci+1).setFontWeight('bold');
+        }
+        if (cell && cell.fc) {
+          sheet.getRange(ri+1, ci+1).setFontColor(cell.fc);
+        }
+        if (cell && cell.wrap) {
+          sheet.getRange(ri+1, ci+1).setWrap(true);
+        }
+        if (cell && cell.align) {
+          sheet.getRange(ri+1, ci+1).setHorizontalAlignment(cell.align);
+        }
+      });
+    });
+
+    // 凍結前3欄、前2列
+    sheet.setFrozenRows(2);
+    sheet.setFrozenColumns(3);
+
+    // 自動調整欄寬
+    sheet.autoResizeColumns(1, values[0].length);
+
+  } else if (data.action === 'append') {
+    sheet.appendRow(data.row);
+  } else if (data.action === 'write') {
+    sheet.clearContents();
+    data.rows.forEach(function(r) { sheet.appendRow(r); });
+  }
+
+  return ContentService.createTextOutput(JSON.stringify({ok:true}))
+    .setMimeType(ContentService.MimeType.JSON);
 }
+
 function doGet(e) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(e.parameter.sheet);
-  if (!sheet) return ContentService.createTextOutput(JSON.stringify({rows:[]})).setMimeType(ContentService.MimeType.JSON);
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify({rows:[]}))
+    .setMimeType(ContentService.MimeType.JSON);
   var rows = sheet.getDataRange().getValues();
-  return ContentService.createTextOutput(JSON.stringify({rows:rows})).setMimeType(ContentService.MimeType.JSON);
+  return ContentService.createTextOutput(JSON.stringify({rows:rows}))
+    .setMimeType(ContentService.MimeType.JSON);
 }</div>
             <button class="btn outline" style="margin-top:8px;font-size:12px" onclick="copyCode()">複製程式碼</button>
           </div>
@@ -576,7 +633,404 @@ function saveDB() {
 }
 function syncToSheet() {
   if (!DB.sheetUrl) return;
-  fetch(DB.sheetUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sheet: 'PokerData', action: 'write', rows: [['DATA', JSON.stringify(DB)]] }) }).catch(() => {});
+
+  const games = [...DB.games].sort((a,b) => a.date.localeCompare(b.date));
+  const season = games[0]?.season || new Date().getFullYear().toString();
+
+  // ── 顏色常數 ──
+  const C_HEADER_DARK  = '#4A4A6A'; // 深紫灰（標頭）
+  const C_HEADER_LIGHT = '#9E9EBF'; // 淡紫（標頭副）
+  const C_FEMALE_BG    = '#E8D5E8'; // 淺紫（女）
+  const C_MALE_BG      = '#F5E6CC'; // 淺米（男）
+  const C_GAME_HDR     = '#D0D0F0'; // 場次標頭淺紫
+  const C_A_HDR        = '#B8D4B8'; // A欄標頭淺綠
+  const C_B_HDR        = '#D4B8D4'; // B欄標頭淺紫
+  const C_C_HDR        = '#D4C8B8'; // C欄標頭淺棕
+  const C_AWARD_F      = '#F0D8F0'; // 女MVP區
+  const C_AWARD_M      = '#F0E8D0'; // 男MVP區
+  const C_AWARD_NEUT   = '#E8F0E8'; // 中性獎項區
+  const C_AWARD_PRIZE  = '#FFF0C8'; // 金錢相關獎項
+  const C_AWARD_RED    = '#F8E0E0'; // 負面獎項
+  const C_WHITE        = '#FFFFFF';
+  const C_GOLD_TEXT    = '#8B6914';
+  const C_DARK_TEXT    = '#222222';
+  const C_RANK1        = '#FFD700'; // 金
+  const C_RANK2        = '#C8C8C8'; // 銀
+  const C_RANK3        = '#CD9B6B'; // 銅
+
+  // helper: cell object
+  const cell = (v, bg, bold, fc, wrap, align) => ({ v: v??'', bg, bold, fc, wrap, align });
+  const hdr  = (v, bg) => cell(v, bg||C_HEADER_DARK, true, '#FFFFFF', true, 'center');
+  const plain= (v, bg) => cell(v, bg||C_WHITE, false, C_DARK_TEXT, false, 'center');
+  const bold = (v, bg) => cell(v, bg||C_WHITE, true,  C_DARK_TEXT, false, 'center');
+
+  // ── 計算每位選手的完整統計 ──
+  const calcStats = (p) => {
+    const pGames = games.filter(g => g.results.some(r => r.playerId === p.id));
+    const allR   = pGames.flatMap(g => g.results.filter(r => r.playerId === p.id));
+    const rankPts    = allR.reduce((s,r)=>s+(r.rank===1?6:r.rank===2?3:r.rank===3?1:0),0);
+    const totalBuyIn = allR.reduce((s,r)=>s+(r.buyIn||0)+(r.rebuys||0)*(r.buyIn||0),0);
+    const totalPrize = allR.reduce((s,r)=>s+(r.prize||0),0);
+    const totalRebuys= allR.reduce((s,r)=>s+(r.rebuys||0),0);
+    const first  = allR.filter(r=>r.rank===1).length;
+    const second = allR.filter(r=>r.rank===2).length;
+    const third  = allR.filter(r=>r.rank===3).length;
+    const dealt  = allR.reduce((s,r)=>s+(r.dealt||0),0);
+    const huWins = allR.reduce((s,r)=>s+(r.huWins||0),0);
+    const huLosses=allR.reduce((s,r)=>s+(r.huLosses||0),0);
+    const net    = totalPrize - totalBuyIn;
+    const roi    = totalBuyIn>0 ? net/totalBuyIn*100 : null;
+    const rebuyRate = pGames.length>0 ? totalRebuys/pGames.length*100 : 0;
+    const huRate = (huWins+huLosses)>0 ? huWins/(huWins+huLosses)*100 : 0;
+    const photo  = first+second+third;
+    // 近期參賽率
+    const allDates = games.map(g=>g.date);
+    const last6 = allDates.slice(-6);
+    const recentP = last6.filter(d=>pGames.some(g=>g.date===d)).length;
+    const recentRate = last6.length ? recentP/last6.length*100 : 0;
+    // MVP score
+    const maxRankPts = Math.max(...DB.players.map(pl=>
+      games.flatMap(g=>g.results.filter(r=>r.playerId===pl.id))
+           .reduce((s,r)=>s+(r.rank===1?6:r.rank===2?3:r.rank===3?1:0),0)
+    ),1);
+    const A = rankPts/maxRankPts;
+    const C = recentRate/100;
+    const mvpScore = (A*0.33+A*0.33+C*0.34)*100;
+    return { rankPts, totalBuyIn, totalPrize, totalRebuys, first, second, third,
+             dealt, huWins, huLosses, net, roi, rebuyRate, huRate, photo,
+             recentRate, mvpScore, pGames: pGames.length,
+             oneShot: first>0 && totalRebuys===0 };
+  };
+
+  const statsMap = {};
+  DB.players.forEach(p => { statsMap[p.id] = calcStats(p); });
+
+  // ── 排名計算 ──
+  const rank = (arr, fn, desc=true) => {
+    const sorted = [...arr].sort((a,b) => desc ? fn(b)-fn(a) : fn(a)-fn(b));
+    const map = {};
+    sorted.forEach((p,i) => { map[p.id] = i+1; });
+    return map;
+  };
+  const females = DB.players.filter(p=>p.gender==='F');
+  const males   = DB.players.filter(p=>p.gender==='M');
+
+  const rankMVP   = rank(DB.players, p=>statsMap[p.id].mvpScore);
+  const rankFMVP  = rank(females, p=>statsMap[p.id].mvpScore);
+  const rankMMVP  = rank(males,   p=>statsMap[p.id].mvpScore);
+  const rankBestF = rank(females, p=>statsMap[p.id].first);
+  const rankBestM = rank(males,   p=>statsMap[p.id].first);
+  const rankPKK   = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].huRate);
+  const rankLemon = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].huRate, false);
+  const rankTop2  = rank(DB.players, p=>statsMap[p.id].second);
+  const rankROI   = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].roi||0);
+  const rankPrize = rank(DB.players, p=>statsMap[p.id].totalPrize);
+  const rankNet   = rank(DB.players, p=>statsMap[p.id].net);
+  const rankATM   = rank(DB.players, p=>-statsMap[p.id].net);
+  const rankPhoto = rank(DB.players, p=>statsMap[p.id].photo);
+  const rankPeace = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].first, false);
+  const rankTight = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].rebuyRate, false);
+  const rankFish  = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].rebuyRate);
+  const rankTilt  = rank(DB.players, p=>statsMap[p.id].totalRebuys);
+
+  const rk = (map, pid) => map[pid] || '';
+
+  // ── 標頭行1 ──
+  const h1 = [
+    hdr('項目',C_HEADER_DARK), hdr('年度',C_HEADER_DARK), hdr('選手',C_HEADER_DARK),
+  ];
+  games.forEach((g,i) => {
+    const lbl = `第${i+1}場
+${g.date.slice(5)}
+S${g.session||1}`;
+    h1.push(hdr(lbl,C_GAME_HDR), hdr('',C_GAME_HDR), hdr('',C_GAME_HDR), hdr('',C_GAME_HDR));
+  });
+  h1.push(
+    hdr('(A)
+名次積分',C_A_HDR),
+    hdr('(B)
+買入/參賽
+(隱藏式積分)',C_B_HDR),
+    hdr('(C)
+近期參賽率
+(最後六場)',C_C_HDR),
+    hdr('[MVP]
+Rank',C_HEADER_LIGHT),
+    hdr('[女MVP]
+(A)*33%+(B)*33%+(C)*34%',C_AWARD_F),
+    hdr('[女MVP]
+Rank',C_AWARD_F),
+    hdr('[男MVP]
+(A)*33%+(B)*33%+(C)*34%',C_AWARD_M),
+    hdr('[男MVP]
+Rank',C_AWARD_M),
+    hdr('👸[最佳女牌手]',C_AWARD_F),
+    hdr('[最佳女牌手]
+女玩家第一最多次',C_AWARD_F),
+    hdr('👑[最佳男牌手]',C_AWARD_M),
+    hdr('[最佳男牌手]
+男玩家第一最多次',C_AWARD_M),
+    hdr('🦍[PK King]',C_AWARD_NEUT),
+    hdr('[PK King]
+HU勝率',C_AWARD_NEUT),
+    hdr('🍐[孔融讓梨]',C_AWARD_NEUT),
+    hdr('[孔融讓梨]
+HU輸率',C_AWARD_NEUT),
+    hdr('✌️[最強老二]',C_AWARD_NEUT),
+    hdr('[最強老二]
+第二名最多次',C_AWARD_NEUT),
+    hdr('📈[投資王]',C_AWARD_PRIZE),
+    hdr('[投資王]
+ROI%',C_AWARD_PRIZE),
+    hdr('💰[獎金王]',C_AWARD_PRIZE),
+    hdr('[獎金王]
+累計獎金',C_AWARD_PRIZE),
+    hdr('💵[尻王]',C_AWARD_PRIZE),
+    hdr('[尻王]
+累計獎金-總投入',C_AWARD_PRIZE),
+    hdr('🏧[ATM贊助王]',C_AWARD_RED),
+    hdr('[ATM贊助王]
+總損失最多',C_AWARD_RED),
+    hdr('📸[拍照王]',C_AWARD_NEUT),
+    hdr('[拍照王]
+前三名次數',C_AWARD_NEUT),
+    hdr('🔫[一發入魂]',C_AWARD_NEUT),
+    hdr('[一發入魂]
+零重買冠軍',C_AWARD_NEUT),
+    hdr('🕊️[和平大使]',C_AWARD_NEUT),
+    hdr('[和平大使]
+正負獎項最少',C_AWARD_NEUT),
+    hdr('🦪[臭緊B]',C_AWARD_NEUT),
+    hdr('[臭緊B]
+重買率最低',C_AWARD_NEUT),
+    hdr('🐟[魚王]
+平均重買率最高',C_AWARD_RED),
+    hdr('[魚王]
+Source',C_AWARD_RED),
+    hdr('🤯[上頭王]',C_AWARD_RED),
+    hdr('[上頭王]
+累計重買最多',C_AWARD_RED),
+    hdr('🦖[泡泡龍]',C_AWARD_RED),
+    hdr('[泡泡龍]
+吃正泡最多',C_AWARD_RED),
+  );
+
+  // ── 標頭行2 ──
+  const h2 = [hdr('','#5A5A8A'),hdr('','#5A5A8A'),hdr('','#5A5A8A')];
+  games.forEach(() => {
+    ['1st','2nd','3rd','4th'].forEach(t => h2.push(hdr(t,C_GAME_HDR)));
+  });
+  const empties = h1.length - 3 - games.length*4;
+  for(let i=0;i<empties;i++) h2.push(hdr('',C_HEADER_LIGHT));
+
+  // ── 資料列 ──
+  const dataRows = DB.players.map((p, idx) => {
+    const s   = statsMap[p.id];
+    const bg  = p.gender==='F' ? C_FEMALE_BG : C_MALE_BG;
+    const row = [
+      plain(idx+1, bg),
+      plain(season, bg),
+      bold(p.name, bg),
+    ];
+
+    // 每場名次
+    games.forEach(g => {
+      const res = g.results.find(r=>r.playerId===p.id);
+      const rnk = res ? res.rank : null;
+      const rankBg = rnk===1?C_RANK1:rnk===2?C_RANK2:rnk===3?C_RANK3:bg;
+      row.push(
+        plain(rnk===1?1:'', rnk===1?C_RANK1:bg),
+        plain(rnk===2?1:'', rnk===2?C_RANK2:bg),
+        plain(rnk===3?1:'', rnk===3?C_RANK3:bg),
+        plain(rnk===4?1:'', bg),
+      );
+    });
+
+    // A B C
+    row.push(
+      bold(s.rankPts,    '#E8F0E8'),
+      plain(s.totalBuyIn,'#F0E8F0'),
+      plain(s.recentRate.toFixed(0)+'%', '#F0ECE8'),
+    );
+
+    // MVP
+    const mvpBg = rk(rankMVP,p.id)===1?C_RANK1:rk(rankMVP,p.id)===2?C_RANK2:rk(rankMVP,p.id)===3?C_RANK3:C_WHITE;
+    row.push(cell(s.mvpScore.toFixed(2), C_AWARD_F, false, C_DARK_TEXT, false, 'center'));
+    row.push(cell(rk(rankMVP,p.id), mvpBg, rk(rankMVP,p.id)<=3, C_DARK_TEXT, false, 'center'));
+
+    // 女MVP
+    const fMVPval = p.gender==='F' ? s.mvpScore.toFixed(2) : '';
+    const fMVPrk  = p.gender==='F' ? rk(rankFMVP,p.id) : '';
+    const fBg = (fMVPrk===1)?C_RANK1:(fMVPrk===2)?C_RANK2:(fMVPrk===3)?C_RANK3:C_AWARD_F;
+    row.push(plain(fMVPval, C_AWARD_F), cell(fMVPrk, fBg, fMVPrk<=3, C_DARK_TEXT, false, 'center'));
+
+    // 男MVP
+    const mMVPval = p.gender==='M' ? s.mvpScore.toFixed(2) : '';
+    const mMVPrk  = p.gender==='M' ? rk(rankMMVP,p.id) : '';
+    const mBg = (mMVPrk===1)?C_RANK1:(mMVPrk===2)?C_RANK2:(mMVPrk===3)?C_RANK3:C_AWARD_M;
+    row.push(plain(mMVPval, C_AWARD_M), cell(mMVPrk, mBg, mMVPrk<=3, C_DARK_TEXT, false, 'center'));
+
+    // 最佳女牌手
+    const bfVal = p.gender==='F' ? s.first : '';
+    const bfRk  = p.gender==='F' ? rk(rankBestF,p.id) : '';
+    row.push(plain(bfVal,C_AWARD_F), cell(bfRk,(bfRk===1)?C_RANK1:C_AWARD_F,bfRk===1,C_DARK_TEXT,false,'center'));
+
+    // 最佳男牌手
+    const bmVal = p.gender==='M' ? s.first : '';
+    const bmRk  = p.gender==='M' ? rk(rankBestM,p.id) : '';
+    row.push(plain(bmVal,C_AWARD_M), cell(bmRk,(bmRk===1)?C_RANK1:C_AWARD_M,bmRk===1,C_DARK_TEXT,false,'center'));
+
+    // PK King
+    const pkkRk = rk(rankPKK,p.id);
+    row.push(
+      plain(s.huRate.toFixed(2)+'%', C_AWARD_NEUT),
+      cell(pkkRk,(pkkRk===1)?C_RANK1:C_AWARD_NEUT,pkkRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 孔融讓梨
+    const lemnRk = rk(rankLemon,p.id);
+    const huLossRate = (s.huWins+s.huLosses)>0 ? (s.huLosses/(s.huWins+s.huLosses)*100).toFixed(2)+'%' : '0.00%';
+    row.push(
+      plain(huLossRate, C_AWARD_NEUT),
+      cell(lemnRk,(lemnRk===1)?C_RANK1:C_AWARD_NEUT,lemnRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 最強老二
+    const top2Rk = rk(rankTop2,p.id);
+    row.push(
+      plain(s.second, C_AWARD_NEUT),
+      cell(top2Rk,(top2Rk===1)?C_RANK1:C_AWARD_NEUT,top2Rk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 投資王
+    const roiRk = rk(rankROI,p.id);
+    const roiVal = s.roi!==null ? s.roi.toFixed(1)+'%' : '';
+    const roiBg  = s.roi>0?'#E8F5E8':s.roi<0?'#FFE8E8':C_AWARD_PRIZE;
+    row.push(
+      cell(roiVal, roiBg, false, s.roi<0?'#CC0000':'#006600', false, 'center'),
+      cell(roiRk,(roiRk===1)?C_RANK1:C_AWARD_PRIZE,roiRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 獎金王
+    const prizeRk = rk(rankPrize,p.id);
+    row.push(
+      plain(s.totalPrize, C_AWARD_PRIZE),
+      cell(prizeRk,(prizeRk===1)?C_RANK1:C_AWARD_PRIZE,prizeRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 尻王
+    const netRk = rk(rankNet,p.id);
+    const netBg = s.net>0?'#E8F5E8':s.net<0?'#FFE8E8':C_AWARD_PRIZE;
+    row.push(
+      cell(s.net, netBg, false, s.net<0?'#CC0000':'#006600', false, 'center'),
+      cell(netRk,(netRk===1)?C_RANK1:C_AWARD_PRIZE,netRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // ATM贊助王
+    const atmRk = rk(rankATM,p.id);
+    row.push(
+      plain(s.net<0?Math.abs(s.net):'', C_AWARD_RED),
+      cell(atmRk,(atmRk===1)?C_RANK1:C_AWARD_RED,atmRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 拍照王
+    const photoRk = rk(rankPhoto,p.id);
+    row.push(
+      plain(s.photo, C_AWARD_NEUT),
+      cell(photoRk,(photoRk===1)?C_RANK1:C_AWARD_NEUT,photoRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 一發入魂
+    row.push(
+      plain(s.oneShot?s.first:'', C_AWARD_NEUT),
+      plain(s.oneShot?'✓':'', C_AWARD_NEUT)
+    );
+
+    // 和平大使
+    const peaceRk = rk(rankPeace,p.id);
+    row.push(
+      plain('', C_AWARD_NEUT),
+      cell(peaceRk,(peaceRk===1)?C_RANK1:C_AWARD_NEUT,peaceRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 臭緊B
+    const tightRk = rk(rankTight,p.id);
+    row.push(
+      plain(s.rebuyRate.toFixed(2)+'%', C_AWARD_NEUT),
+      cell(tightRk,(tightRk===1)?C_RANK1:C_AWARD_NEUT,tightRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 魚王
+    const fishRk = rk(rankFish,p.id);
+    row.push(
+      plain(s.rebuyRate.toFixed(2)+'%', C_AWARD_RED),
+      cell(fishRk,(fishRk===1)?C_RANK1:C_AWARD_RED,fishRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 上頭王
+    const tiltRk = rk(rankTilt,p.id);
+    row.push(
+      plain(s.totalRebuys, C_AWARD_RED),
+      cell(tiltRk,(tiltRk===1)?C_RANK1:C_AWARD_RED,tiltRk===1,C_DARK_TEXT,false,'center')
+    );
+
+    // 泡泡龍（手動）
+    row.push(plain('', C_AWARD_RED), plain('', C_AWARD_RED));
+
+    return row;
+  });
+
+  const overviewRows = [h1, h2, ...dataRows];
+
+  // ── 工作表2：成績明細 ──
+  const detailH = [
+    hdr('場次','#5A5A8A'), hdr('日期','#5A5A8A'), hdr('賽季','#5A5A8A'),
+    hdr('選手','#5A5A8A'), hdr('性別','#5A5A8A'), hdr('名次','#5A5A8A'),
+    hdr('買入','#5A5A8A'), hdr('重買次','#5A5A8A'), hdr('總投入','#5A5A8A'),
+    hdr('獎金','#5A5A8A'), hdr('淨利','#5A5A8A'), hdr('有發牌','#5A5A8A'),
+  ];
+  const detailRows = [detailH];
+  games.forEach((g, gi) => {
+    const sorted = [...g.results].sort((a,b)=>a.rank-b.rank);
+    sorted.forEach(r => {
+      const p   = DB.players.find(x=>x.id===r.playerId);
+      const bg  = (r.gender||'M')==='F' ? C_FEMALE_BG : C_MALE_BG;
+      const ti  = (r.buyIn||0)+(r.rebuys||0)*(r.buyIn||0);
+      const net = (r.prize||0)-ti;
+      const rkBg= r.rank===1?C_RANK1:r.rank===2?C_RANK2:r.rank===3?C_RANK3:bg;
+      detailRows.push([
+        plain(`第${gi+1}場 S${g.session||1}`, bg),
+        plain(g.date, bg),
+        plain(g.season, bg),
+        bold(p?p.name:r.playerId, bg),
+        plain((r.gender||'M')==='F'?'女':'男', bg),
+        cell(r.rank, rkBg, r.rank<=3, C_DARK_TEXT, false, 'center'),
+        plain(r.buyIn||0, bg),
+        plain(r.rebuys||0, bg),
+        plain(ti, bg),
+        plain(r.prize||0, bg),
+        cell(net, net>0?'#E8F5E8':net<0?'#FFE8E8':bg, false, net<0?'#CC0000':'#006600', false, 'center'),
+        plain(r.dealt?'是':'否', bg),
+      ]);
+    });
+  });
+
+  // ── 工作表3：PokerData 備份 ──
+  const backupRows = [['DATA', JSON.stringify(DB)]];
+
+  const writes = [
+    { sheet: '總覽',      action: 'write_formatted', rows: overviewRows },
+    { sheet: '成績明細',  action: 'write_formatted', rows: detailRows   },
+    { sheet: 'PokerData', action: 'write',            rows: backupRows  },
+  ];
+
+  writes.forEach(w => {
+    fetch(DB.sheetUrl, {
+      method: 'POST', mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(w)
+    }).catch(() => {});
+  });
 }
 
 // ── 從 Google Sheets 同步資料回來 ──
