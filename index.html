@@ -392,6 +392,9 @@ select option { background: var(--bg3); }
   .setup-step::before { width: 22px; height: 22px; font-size: 13px; }
 }
 
+/* Chart 手機版高度 */
+  #mvp-trend-chart { max-height: 480px !important; }
+
 /* 超小螢幕 (375px 以下) */
 @media (max-width: 420px) {
   .tab { padding: 10px 8px; font-size: 10px; letter-spacing: 0.5px; }
@@ -472,7 +475,7 @@ select option { background: var(--bg3); }
   </div>
   <div class="sec-divider" data-zh="📈 MVP 積分走勢圖" data-en="📈 MVP Score Trend">📈 MVP 積分走勢圖</div>
   <div style="background:var(--bg2);border:1px solid var(--border);padding:24px 20px;">
-    <canvas id="mvp-trend-chart" height="110"></canvas>
+    <canvas id="mvp-trend-chart" style="max-height:340px;"></canvas>
   </div>
 </div>
 
@@ -1555,6 +1558,7 @@ function renderMvpChart(season) {
     data: { labels, datasets },
     options: {
       responsive: true,
+      maintainAspectRatio: window.innerWidth > 768,
       interaction: { mode: 'index', intersect: false },
       plugins: {
         legend: {
