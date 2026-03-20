@@ -926,7 +926,7 @@ function syncToSheet() {
     return { rankPts, totalBuyIn, totalPrize, totalRebuys, first, second, third,
              dealt, huWins, huLosses, net, roi, rebuyRate, huRate, photo,
              recentRate, mvpScore, pGames: pGames.length,
-             oneShot: first>0 && totalRebuys===0 };
+             oneShotCount: allR.filter(r=>r.rank===1&&(r.rebuys||0)===0).length };
   };
 
   const statsMap = {};
@@ -1143,8 +1143,8 @@ S${g.session||1}`;
 
     // 一發入魂
     row.push(
-      plain(s.oneShot?s.first:'', C_AWARD_NEUT),
-      plain(s.oneShot?'✓':'', C_AWARD_NEUT)
+      plain(s.oneShotCount||0, C_AWARD_NEUT),
+      plain(s.oneShotCount>0?'✓':'', C_AWARD_NEUT)
     );
 
     // 和平大使
@@ -1506,7 +1506,7 @@ function computeStats(season) {
   const games = season === 'all' ? DB.games : DB.games.filter(g => g.season === season);
   const stats = {};
   DB.players.forEach(p => {
-    stats[p.id] = { id:p.id, name:p.name, gender:p.gender, games:0, rankPts:0, totalBuyIn:0, totalRebuys:0, totalPrize:0, first:0, second:0, third:0, fourth:0, dealt:0, huWins:0, huLosses:0, allGames:[], maxSingleRebuys:0 };
+    stats[p.id] = { id:p.id, name:p.name, gender:p.gender, games:0, rankPts:0, totalBuyIn:0, totalRebuys:0, totalPrize:0, first:0, second:0, third:0, fourth:0, dealt:0, huWins:0, huLosses:0, allGames:[], maxSingleRebuys:0, oneShotCount:0 };
   });
   // 以 game.id 為單位排序（避免同日多場重複計算）
   const sortedGames = [...games].sort((a,b) => a.date.localeCompare(b.date) || (a.session||1)-(b.session||1));
@@ -1520,7 +1520,7 @@ function computeStats(season) {
       s.totalBuyIn += r.buyIn + (r.rebuys * r.buyIn);
       s.totalRebuys += r.rebuys; s.totalPrize += r.prize; s.dealt += r.dealt;
       s.huWins += r.huWins||0; s.huLosses += r.huLosses||0;
-      if (r.rank===1) s.first++;
+      if (r.rank===1) { s.first++; if ((r.rebuys||0)===0) s.oneShotCount++; }
       if (r.rank===2) s.second++;
       if (r.rank===3) s.third++;
       if (r.rank===4) s.fourth++;
@@ -1730,7 +1730,7 @@ const AWARD_DEFS = [
   { key:'fish',    icon:'🐟', zh:'魚王', en:'Fish King',             desc:'每場平均重買率最高', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>b.rebuyRate-a.rebuyRate), fmt:s=>`${(s.rebuyRate*100).toFixed(1)}% 重買率` },
   { key:'pkking',  icon:'🦍', zh:'PK King', en:'PK King',            desc:'第1名/(第1名+第2名) 比率最高 (需≥3場HU)', fn:s=>s.filter(x=>(x.first+x.second)>=3).sort((a,b)=>(b.first/(b.first+b.second||1))-(a.first/(a.first+a.second||1))), fmt:s=>`${(s.first/(s.first+s.second)*100).toFixed(0)}% (${s.first}次1st/${s.first+s.second}場HU)` },
   { key:'lemon',   icon:'🍐', zh:'孔融讓梨', en:'Humble One',        desc:'第2名/(第1名+第2名) 比率最高 (需≥3場HU且至少1次第2名)', fn:s=>s.filter(x=>(x.first+x.second)>=3 && x.second>0).sort((a,b)=>(b.second/(b.first+b.second||1))-(a.second/(a.first+a.second||1))), fmt:s=>`${(s.second/(s.first+s.second)*100).toFixed(0)}% (${s.second}次2nd/${s.first+s.second}場HU)` },
-  { key:'oneshot', icon:'🔫', zh:'一發入魂', en:'One Shot',          desc:'一次買入就獲得冠軍', fn:s=>s.filter(x=>x.first>0&&x.totalRebuys===0).sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次` },
+  { key:'oneshot', icon:'🔫', zh:'一發入魂', en:'One Shot',          desc:'拿冠軍當場零重買的次數最多', fn:s=>s.filter(x=>x.oneShotCount>0).sort((a,b)=>b.oneShotCount-a.oneShotCount), fmt:s=>`${s.oneShotCount} 次` },
   { key:'topdog2', icon:'✌️', zh:'最強老二', en:'Best 2nd',          desc:'第二名最多次', fn:s=>s.sort((a,b)=>b.second-a.second), fmt:s=>`${s.second} 次` },
   { key:'mama',    icon:'👩‍🦰', zh:'愛心媽媽', en:'Mama Love',        desc:'發牌次數最多（手動記錄）', fn:s=>s.sort((a,b)=>b.dealt-a.dealt), fmt:s=>`${s.dealt} 次發牌` },
   { key:'bubble',  icon:'🦖', zh:'泡泡龍', en:'Bubble',              desc:'正泡(第四名)次數最多', fn:s=>s.sort((a,b)=>b.fourth-a.fourth), fmt:s=>`${s.fourth} 次正泡` },
