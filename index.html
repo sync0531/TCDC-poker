@@ -1416,13 +1416,27 @@ function adjustBuyin(rank, delta) {
 
 function calcGamePrizes() {
   const entryFee = parseFloat(document.getElementById('game-entry-fee').value) || 500;
-  let totalPool  = 0;
+  let totalPool = 0;
   document.querySelectorAll('.rank-slot').forEach(slot => {
     const cnt = parseInt(slot.querySelector('.buyin-display')?.dataset.count)||1;
     totalPool += cnt * entryFee;
   });
-  const poolFund = Math.round(totalPool * 0.1);
-  return { totalPool, poolFund, p1: Math.round(totalPool*0.6), p2: Math.round(totalPool*0.3), p3: Math.round(totalPool*0.1) };
+
+  const poolFund    = Math.round(totalPool * 0.1);   // 10% 公積金
+  const distributable = totalPool - poolFund;          // 90% 可分配
+
+  // 按 6:3:1 分配，先無條件捨去至百位（個位+十位歸零）
+  let raw1 = distributable * 0.6;
+  let raw2 = distributable * 0.3;
+  let raw3 = distributable * 0.1;
+
+  // 無條件捨去十位數及個位數（floor to 100）
+  const p1 = Math.floor(raw1 / 100) * 100;
+  const p2 = Math.floor(raw2 / 100) * 100;
+  // 第3名 = 剩餘全部（含1st、2nd的零頭）
+  const p3 = distributable - p1 - p2;
+
+  return { totalPool, poolFund, p1, p2, p3 };
 }
 
 function updatePrizePreview() {
@@ -1910,10 +1924,15 @@ function saveGameEdit() {
   // 重新計算獎金
   const totalPool = modalResultRows.reduce((sum,r) => sum + (r.buyIn||0)*(1+(r.rebuys||0)), 0);
   g.totalPool = totalPool;
-  g.pool    = Math.round(totalPool * 0.1);
-  g.prize1  = Math.round(totalPool * 0.6);
-  g.prize2  = Math.round(totalPool * 0.3);
-  g.prize3  = Math.round(totalPool * 0.1);
+  const _pool = Math.round(totalPool * 0.1);
+  const _dist = totalPool - _pool;
+  const _p1   = Math.floor(_dist * 0.6 / 100) * 100;
+  const _p2   = Math.floor(_dist * 0.3 / 100) * 100;
+  const _p3   = _dist - _p1 - _p2;
+  g.pool   = _pool;
+  g.prize1 = _p1;
+  g.prize2 = _p2;
+  g.prize3 = _p3;
   // 更新 modal 顯示
   document.getElementById('modal-total-pool').textContent = '$'+totalPool.toLocaleString();
   document.getElementById('modal-prize1').textContent = '$'+g.prize1.toLocaleString();
