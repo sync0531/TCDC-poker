@@ -1,0 +1,1347 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>POKER LEAGUE — 德州撲克錦標賽統計系統</title>
+<link href="https://fonts.googleapis.com/css2?family=Teko:wght@400;500;600;700&family=Barlow+Condensed:wght@400;500;600;700&family=Noto+Sans+TC:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --red:       #C8102E;
+  --red-dark:  #9E0B22;
+  --red-light: #E8233F;
+  --red-dim:   rgba(200,16,46,0.15);
+  --gold:      #B8943A;
+  --gold-lt:   #D4AB4A;
+  --white:     #FFFFFF;
+  --text:      #E8E8E8;
+  --text2:     #9A9A9A;
+  --text3:     #666666;
+  --bg:        #000000;
+  --bg2:       #0C0C0C;
+  --bg3:       #141414;
+  --bg4:       #1C1C1C;
+  --bg5:       #242424;
+  --border:    rgba(255,255,255,0.08);
+  --border2:   rgba(255,255,255,0.15);
+  --green-pos: #2ECC71;
+  --red-neg:   #E74C3C;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Noto Sans TC', sans-serif; min-height: 100vh; }
+
+/* HEADER */
+header {
+  background: var(--bg);
+  border-bottom: 3px solid var(--red);
+  padding: 0 32px;
+  display: flex; align-items: stretch; justify-content: space-between;
+  position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 2px 20px rgba(0,0,0,0.9);
+}
+.logo { display: flex; align-items: center; gap: 14px; padding: 16px 0; }
+.logo-badge {
+  background: var(--red); color: #fff; width: 44px; height: 44px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 22px; flex-shrink: 0;
+}
+.logo-text h1 {
+  font-family: 'Teko', sans-serif; font-size: 18px; font-weight: 700;
+  color: var(--white); letter-spacing: 4px; text-transform: uppercase; line-height: 1;
+}
+.logo-text p {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 11px;
+  color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px;
+}
+.header-right { display: flex; align-items: center; gap: 8px; }
+.lang-btn {
+  background: transparent; border: 1px solid var(--border2); color: var(--text2);
+  padding: 7px 16px; cursor: pointer; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 12px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.2s;
+}
+.lang-btn:hover { background: var(--red); color: #fff; border-color: var(--red); }
+
+/* NAV */
+nav {
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  display: flex; overflow-x: auto; padding: 0 24px;
+}
+nav::-webkit-scrollbar { height: 0; }
+.tab {
+  padding: 14px 20px; cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 600;
+  color: var(--text2); border-bottom: 3px solid transparent; white-space: nowrap;
+  transition: all 0.2s; letter-spacing: 1.5px; text-transform: uppercase;
+}
+.tab:hover { color: var(--white); background: rgba(255,255,255,0.03); }
+.tab.active { color: var(--white); border-bottom-color: var(--red); }
+
+/* MAIN */
+main { max-width: 1440px; margin: 0 auto; padding: 28px 32px; }
+.section { display: none; }
+.section.active { display: block; }
+
+/* SEASON BAR */
+.season-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+.season-bar label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; }
+.select-styled { background: var(--bg3); border: 1px solid var(--border2); color: var(--white); padding: 7px 14px; font-size: 13px; cursor: pointer; font-family: 'Noto Sans TC', sans-serif; }
+
+/* BUTTONS */
+.btn {
+  background: var(--red); color: #fff; border: none; padding: 9px 22px; cursor: pointer;
+  font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700;
+  letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.2s;
+}
+.btn:hover { background: var(--red-light); }
+.btn.outline { background: transparent; border: 1px solid var(--border2); color: var(--text2); }
+.btn.outline:hover { border-color: var(--white); color: var(--white); }
+.btn.danger { background: #8B0000; color: #fff; }
+.btn.danger:hover { background: var(--red); }
+
+/* STATS CARDS */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px,1fr)); gap: 12px; margin-bottom: 28px; }
+.stat-card { background: var(--bg2); border: 1px solid var(--border); border-top: 2px solid var(--red); padding: 18px 20px; text-align: center; }
+.stat-card .num { font-family: 'Teko', sans-serif; font-size: 42px; color: var(--white); line-height: 1; font-weight: 600; }
+.stat-card .lbl { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; color: var(--text3); margin-top: 4px; letter-spacing: 1.5px; text-transform: uppercase; }
+
+/* TABLE */
+.table-wrap { overflow-x: auto; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+thead tr { background: var(--bg3); }
+th { padding: 11px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 1.5px; font-size: 11px; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border2); white-space: nowrap; }
+td { padding: 10px 14px; border-bottom: 1px solid var(--border); color: var(--text); vertical-align: middle; white-space: nowrap; }
+tbody tr:nth-child(even) { background: rgba(255,255,255,0.02); }
+tbody tr:hover { background: rgba(200,16,46,0.06) !important; }
+tbody tr:last-child td { border-bottom: none; }
+.rank { font-family: 'Teko', sans-serif; font-size: 22px; color: var(--text3); font-weight: 600; }
+.rank.gold { color: #FFD700; }
+.rank.silver { color: #C0C0C0; }
+.rank.bronze { color: #CD7F32; }
+.player-name { font-weight: 700; font-size: 14px; color: var(--white); }
+.badge { display: inline-flex; align-items: center; gap: 3px; padding: 2px 7px; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.5px; text-transform: uppercase; }
+.badge.male { background: rgba(50,100,200,0.2); color: #7CB3E8; border: 1px solid rgba(50,100,200,0.3); }
+.badge.female { background: rgba(200,16,46,0.2); color: #FF8A9B; border: 1px solid rgba(200,16,46,0.3); }
+.score { font-family: 'Teko', sans-serif; font-weight: 600; color: #FF4560; font-size: 16px; }
+.positive { color: var(--green-pos); }
+.negative { color: var(--red-neg); }
+
+/* MVP GRID */
+.mvp-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 14px; margin-bottom: 24px; }
+.mvp-card { background: var(--bg2); border: 1px solid var(--border); border-top: 3px solid var(--red); padding: 24px; text-align: center; }
+.mvp-card .crown { font-size: 44px; margin-bottom: 10px; }
+.mvp-card .title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: var(--text3); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; }
+.mvp-card .name { font-family: 'Teko', sans-serif; font-size: 51px; color: var(--white); font-weight: 600; line-height: 1; }
+.mvp-card .pts { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; color: var(--text3); margin-top: 8px; letter-spacing: 0.5px; line-height: 1.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* AWARDS */
+.awards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 12px; margin-bottom: 28px; }
+.award-card { background: var(--bg2); border: 1px solid var(--border); padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; transition: border-color 0.2s; }
+.award-card:hover { border-color: var(--border2); }
+.award-icon { font-size: 26px; flex-shrink: 0; width: 40px; text-align: center; }
+.award-info h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 21px; font-weight: 700; margin-bottom: 4px; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); }
+.award-info .holder { font-family: 'Teko', sans-serif; font-size: 35px; font-weight: 600; color: var(--white); line-height: 1.1; }
+.award-info .desc { font-size: 13px; color: var(--text3); margin-top: 4px; line-height: 1.5; }
+.award-info .detail { font-size: 14px; color: var(--text2); margin-top: 2px; }
+.tbd { color: var(--text3); font-size: 18px; font-style: italic; }
+
+/* DASH AWARDS */
+.dash-awards-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 24px; }
+@media (max-width: 700px) { .dash-awards-grid { grid-template-columns: 1fr; } }
+.dash-award-card { background: var(--bg2); border: 1px solid var(--border); padding: 14px 16px; display: flex; gap: 12px; align-items: flex-start; transition: border-color 0.2s; }
+.dash-award-card:hover { border-color: var(--border2); }
+.dash-award-card:nth-child(odd)  { border-left: 3px solid var(--red-dark); }
+.dash-award-card:nth-child(even) { border-right: 3px solid var(--red-dark); }
+.dac-icon { font-size: 28px; flex-shrink: 0; width: 40px; text-align: center; padding-top: 2px; }
+.dac-body { flex: 1; min-width: 0; }
+.dac-title { font-family: 'Barlow Condensed', sans-serif; font-size: 16px; color: var(--text3); text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 4px; }
+.dac-winner { font-family: 'Teko', sans-serif; font-size: 32px; font-weight: 600; color: var(--white); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1; }
+.dac-detail { font-size: 14px; color: var(--text3); margin-top: 3px; }
+.dac-runners { margin-top: 7px; border-top: 1px solid var(--border); padding-top: 6px; display: flex; flex-direction: column; gap: 4px; }
+.dac-runner { display: flex; align-items: center; gap: 8px; font-size: 16px; color: var(--text2); }
+.dac-runner .rk { font-family: 'Teko', sans-serif; font-size: 18px; width: 18px; flex-shrink: 0; font-weight: 600; }
+.dac-runner .rk.silver { color: #C0C0C0; }
+.dac-runner .rk.bronze { color: #CD7F32; }
+.dac-runner .rname { flex: 1; }
+.dac-runner .rval { color: var(--text3); font-size: 13px; }
+.dac-tbd { color: var(--text3); font-style: italic; font-size: 18px; }
+
+/* FORM */
+.form-section { background: var(--bg2); border: 1px solid var(--border); padding: 24px; margin-bottom: 20px; }
+.form-section h2 { font-family: 'Barlow Condensed', sans-serif; font-size: 15px; font-weight: 700; color: var(--white); margin-bottom: 18px; border-bottom: 1px solid var(--border); padding-bottom: 12px; letter-spacing: 1.5px; text-transform: uppercase; }
+.form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 14px; margin-bottom: 18px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group label { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; color: var(--text3); letter-spacing: 1.5px; text-transform: uppercase; }
+input, select, textarea { background: var(--bg3); border: 1px solid var(--border2); color: var(--text); padding: 9px 12px; font-size: 13px; font-family: 'Noto Sans TC', sans-serif; transition: border-color 0.2s; outline: none; }
+input:focus, select:focus { border-color: var(--red); }
+input[type=number] { -moz-appearance: textfield; }
+input[type=number]::-webkit-outer-spin-button, input[type=number]::-webkit-inner-spin-button { -webkit-appearance: none; }
+select option { background: var(--bg3); }
+
+/* PLAYER ENTRY ROWS */
+.player-entries { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.player-row { display: grid; gap: 8px; align-items: center; grid-template-columns: 1.6fr 80px 80px 80px 80px 80px 36px; background: var(--bg3); border: 1px solid var(--border); padding: 8px 12px; }
+.player-row.header { background: transparent; border-color: transparent; padding-bottom: 2px; }
+.player-row.header span { font-family: 'Barlow Condensed', sans-serif; font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 1px; }
+.player-row input, .player-row select { padding: 6px 8px; font-size: 12px; }
+.remove-btn { background: transparent; border: 1px solid rgba(150,20,20,0.4); color: #E8233F; cursor: pointer; font-size: 15px; padding: 3px 0; line-height: 1; width: 100%; transition: all 0.15s; }
+.remove-btn:hover { background: rgba(200,16,46,0.2); }
+.add-player-btn { background: transparent; border: 1px dashed var(--border2); color: var(--text3); padding: 10px; cursor: pointer; width: 100%; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.2s; }
+.add-player-btn:hover { border-color: var(--red); color: var(--red); }
+
+/* LB TABS */
+.lb-tabs { display: flex; gap: 4px; margin-bottom: 16px; flex-wrap: wrap; }
+.lb-tab { background: var(--bg3); border: 1px solid var(--border); color: var(--text2); padding: 7px 20px; cursor: pointer; font-family: 'Barlow Condensed', sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.2s; }
+.lb-tab.active { background: var(--red); color: #fff; border-color: var(--red); }
+.lb-tab:hover:not(.active) { border-color: var(--border2); color: var(--white); }
+
+/* HISTORY FILTERS */
+.history-filters { display: flex; gap: 10px; margin-bottom: 14px; flex-wrap: wrap; align-items: center; }
+
+/* CONFIG */
+.config-section { display: flex; flex-direction: column; gap: 16px; }
+.config-block { background: var(--bg2); border: 1px solid var(--border); padding: 22px; }
+.config-block h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 13px; font-weight: 700; color: var(--text2); margin-bottom: 14px; letter-spacing: 1.5px; text-transform: uppercase; }
+.config-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); }
+.config-row:last-child { border-bottom: none; }
+.config-row label { font-size: 13px; color: var(--text); }
+.config-row small { font-size: 11px; color: var(--text3); display: block; margin-top: 2px; }
+.formula-box { background: var(--bg3); border: 1px solid var(--border); border-left: 3px solid var(--red); padding: 14px 16px; margin-bottom: 14px; font-size: 13px; color: var(--text2); line-height: 2.2; }
+.formula-box strong { font-family: 'Barlow Condensed', sans-serif; color: var(--white); font-size: 14px; letter-spacing: 0.5px; }
+.setup-steps { counter-reset: steps; display: flex; flex-direction: column; gap: 12px; }
+.setup-step { display: flex; gap: 14px; align-items: flex-start; background: var(--bg3); padding: 14px 16px; }
+.setup-step::before { counter-increment: steps; content: counter(steps); background: var(--red); color: #fff; width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; font-family: 'Teko', sans-serif; font-weight: 700; font-size: 16px; flex-shrink: 0; }
+.setup-step .content h4 { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 700; margin-bottom: 4px; letter-spacing: 0.5px; color: var(--white); }
+.setup-step .content p { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.code-box { background: #000; border: 1px solid var(--border2); padding: 12px; font-family: monospace; font-size: 12px; color: #7EC8E3; margin-top: 8px; overflow-x: auto; white-space: pre; }
+.sheet-url-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; }
+.sheet-url-bar input { flex: 1; }
+
+/* NOTIFICATION */
+.notif { position: fixed; top: 72px; right: 24px; z-index: 999; background: var(--bg3); color: var(--white); border: 1px solid var(--border2); border-left: 3px solid var(--red); padding: 12px 20px; font-family: 'Barlow Condensed', sans-serif; font-size: 14px; font-weight: 600; letter-spacing: 0.5px; box-shadow: 0 4px 20px rgba(0,0,0,0.8); transform: translateX(300%); transition: transform 0.3s; }
+.notif.show { transform: translateX(0); }
+.notif.error { border-left-color: #8B0000; color: #FF8A9B; }
+
+/* SESSION BADGE */
+.session-badge { display: inline-block; background: var(--red); color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 10px; font-weight: 700; padding: 2px 7px; letter-spacing: 1px; text-transform: uppercase; }
+
+/* SEC DIVIDER */
+.sec-divider { font-family: 'Barlow Condensed', sans-serif; font-size: 11px; color: var(--text3); letter-spacing: 2px; text-transform: uppercase; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  header { padding: 0 16px; }
+  nav { padding: 0 12px; }
+  main { padding: 16px; }
+  .mvp-grid { grid-template-columns: 1fr; }
+  .player-row { grid-template-columns: 1fr 1fr; }
+  .player-row.header { display: none; }
+}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+</head>
+<body>
+
+<div class="notif" id="notif"></div>
+
+<header>
+  <div class="logo">
+    <img src="data:image/jpeg;base64,/9j/4Th+aHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wLwA8P3hwYWNrZXQgYmVnaW49Iu+7vyIgaWQ9Ilc1TTBNcENlaGlIenJlU3pOVGN6a2M5ZCI/Pgo8eDp4bXBtZXRhIHhtbG5zOng9ImFkb2JlOm5zOm1ldGEvIiB4OnhtcHRrPSJBZG9iZSBYTVAgQ29yZSAxMC4wLWMwMDAgMS4wMDAwMDAsIDAwMDAvMDAvMDAtMDA6MDA6MDAgICAgICAgICI+CiAgIDxyZGY6UkRGIHhtbG5zOnJkZj0iaHR0cDovL3d3dy53My5vcmcvMTk5OS8wMi8yMi1yZGYtc3ludGF4LW5zIyI+CiAgICAgIDxyZGY6RGVzY3JpcHRpb24gcmRmOmFib3V0PSIiCiAgICAgICAgICAgIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIKICAgICAgICAgICAgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIgogICAgICAgICAgICB4bWxuczp4bXBHSW1nPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvZy9pbWcvIgogICAgICAgICAgICB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIKICAgICAgICAgICAgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiCiAgICAgICAgICAgIHhtbG5zOnN0RXZ0PSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VFdmVudCMiCiAgICAgICAgICAgIHhtbG5zOmlsbHVzdHJhdG9yPSJodHRwOi8vbnMuYWRvYmUuY29tL2lsbHVzdHJhdG9yLzEuMC8iCiAgICAgICAgICAgIHhtbG5zOnBkZj0iaHR0cDovL25zLmFkb2JlLmNvbS9wZGYvMS4zLyI+CiAgICAgICAgIDxkYzpmb3JtYXQ+SlBFRyBmaWxlIGZvcm1hdDwvZGM6Zm9ybWF0PgogICAgICAgICA8ZGM6dGl0bGU+CiAgICAgICAgICAgIDxyZGY6QWx0PgogICAgICAgICAgICAgICA8cmRmOmxpIHhtbDpsYW5nPSJ4LWRlZmF1bHQiPnRjZGMgbG9nbzwvcmRmOmxpPgogICAgICAgICAgICA8L3JkZjpBbHQ+CiAgICAgICAgIDwvZGM6dGl0bGU+CiAgICAgICAgIDx4bXA6TWV0YWRhdGFEYXRlPjIwMjYtMDMtMTlUMTk6MzY6MDgrMDg6MDA8L3htcDpNZXRhZGF0YURhdGU+CiAgICAgICAgIDx4bXA6TW9kaWZ5RGF0ZT4yMDI2LTAzLTE5VDExOjM2OjA4WjwveG1wOk1vZGlmeURhdGU+CiAgICAgICAgIDx4bXA6Q3JlYXRlRGF0ZT4yMDI2LTAzLTE5VDE5OjM2OjA4KzA4OjAwPC94bXA6Q3JlYXRlRGF0ZT4KICAgICAgICAgPHhtcDpDcmVhdG9yVG9vbD5BZG9iZSBJbGx1c3RyYXRvciAzMC4yIChNYWNpbnRvc2gpPC94bXA6Q3JlYXRvclRvb2w+CiAgICAgICAgIDx4bXA6VGh1bWJuYWlscz4KICAgICAgICAgICAgPHJkZjpBbHQ+CiAgICAgICAgICAgICAgIDxyZGY6bGkgcmRmOnBhcnNlVHlwZT0iUmVzb3VyY2UiPgogICAgICAgICAgICAgICAgICA8eG1wR0ltZzp3aWR0aD4yNTY8L3htcEdJbWc6d2lkdGg+CiAgICAgICAgICAgICAgICAgIDx4bXBHSW1nOmhlaWdodD42ODwveG1wR0ltZzpoZWlnaHQ+CiAgICAgICAgICAgICAgICAgIDx4bXBHSW1nOmZvcm1hdD5KUEVHPC94bXBHSW1nOmZvcm1hdD4KICAgICAgICAgICAgICAgICAgPHhtcEdJbWc6aW1hZ2U+LzlqLzRBQVFTa1pKUmdBQkFnRUFBQUFBQUFELzdRQXNVR2h2ZEc5emFHOXdJRE11TUFBNFFrbE5BKzBBQUFBQUFCQUFBQUFBQUFFQSYjeEE7QVFBQUFBQUFBUUFCLys0QURrRmtiMkpsQUdUQUFBQUFBZi9iQUlRQUJnUUVCQVVFQmdVRkJna0dCUVlKQ3dnR0JnZ0xEQW9LQ3dvSyYjeEE7REJBTURBd01EQXdRREE0UEVBOE9EQk1URkJRVEV4d2JHeHNjSHg4Zkh4OGZIeDhmSHdFSEJ3Y05EQTBZRUJBWUdoVVJGUm9mSHg4ZiYjeEE7SHg4Zkh4OGZIeDhmSHg4Zkh4OGZIeDhmSHg4Zkh4OGZIeDhmSHg4Zkh4OGZIeDhmSHg4Zkh4OGZIeDhmLzhBQUVRZ0FSQUVBQXdFUiYjeEE7QUFJUkFRTVJBZi9FQWFJQUFBQUhBUUVCQVFFQUFBQUFBQUFBQUFRRkF3SUdBUUFIQ0FrS0N3RUFBZ0lEQVFFQkFRRUFBQUFBQUFBQSYjeEE7QVFBQ0F3UUZCZ2NJQ1FvTEVBQUNBUU1EQWdRQ0JnY0RCQUlHQW5NQkFnTVJCQUFGSVJJeFFWRUdFMkVpY1lFVU1wR2hCeFd4UWlQQiYjeEE7VXRIaE14Wmk4Q1J5Z3ZFbFF6UlRrcUt5WTNQQ05VUW5rNk96TmhkVVpIVEQwdUlJSm9NSkNoZ1poSlJGUnFTMFZ0TlZLQnJ5NC9QRSYjeEE7MU9UMFpYV0ZsYVcxeGRYbDlXWjJocGFtdHNiVzV2WTNSMWRuZDRlWHA3ZkgxK2YzT0VoWWFIaUltS2k0eU5qbytDazVTVmxwZVltWiYjeEE7cWJuSjJlbjVLanBLV21wNmlwcXF1c3JhNnZvUkFBSUNBUUlEQlFVRUJRWUVDQU1EYlFFQUFoRURCQ0VTTVVFRlVSTmhJZ1p4Z1pFeSYjeEE7b2JId0ZNSFI0U05DRlZKaWN2RXpKRFJEZ2hhU1V5V2lZN0xDQjNQU05lSkVneGRVa3dnSkNoZ1pKalpGR2lka2RGVTM4cU96d3lncCYjeEE7MCtQemhKU2t0TVRVNVBSbGRZV1ZwYlhGMWVYMVJsWm1kb2FXcHJiRzF1YjJSMWRuZDRlWHA3ZkgxK2YzT0VoWWFIaUltS2k0eU5qbyYjeEE7K0RsSldXbDVpWm1wdWNuWjZma3FPa3BhYW5xS21xcTZ5dHJxK3YvYUFBd0RBUUFDRVFNUkFEOEE4dDRHU2RlU2ZNVGVXL04raTYrRiYjeEE7TGpUTDJDNmVNZFdTT1FNNkQvV1dveFYrbHRsZVd0N1p3WHRwS3MxcmN4cE5ieklhcThjaWhrWlQ0RlRYQ3hWc1ZkaXJzVmRpcnNWZCYjeEE7aXJ5ajgzditjaVBLWDVlODlPaVg5TWVaQ3RScHNMaFVocjBOekxSdUhqeEFMZXdCcmltbnluNXovd0NjaVB6WDgwelA2MnRTNlpaTSYjeEE7VHdzZE1KdFl3cC9aTG9mVmNmNjduQWw1elBjVDNFaGxua2FXVnZ0TzdGbVB6SnhWRWFYcldzYVRjTGM2WGYzRmhjSWVTVFdzcnd1RCYjeEE7NGhveXB4VjYvd0NRditjci93QXlQTHNzVUd0eUw1azBzR2p4M1ZFdWd0ZCtGeW81RS84QUdRTmloOWJmbHorYUhsSDh3TkkvU09nWCYjeEE7UEo0cUM4c1pRRXVMZDI2Q1JLblk5bVVsVDJQWENobG1LdXhWNVYrYi93RHprTDVTL0x3UHA2ajlMZVpTb0thWEMzRll1UXFyWE1tLyYjeEE7cGdqY0tBV08yd0JyaW1ueWw1eS81eUwvQURZODB5eUNYV1pOS3NtcUZzZExMV3FCVHNRWFUrczRQZm01R0JMemllNHVMaVF5enl2TiYjeEE7SWVyeU1XWTkrcHhWWDAzV05XMHVkYmpUTDI0c2JoVFZacmFWNFhCOFF5RlRpcjE3eUIvemxiK1pIbHlXT0RXcFI1azBzVURSWGg0MyYjeEE7S2ovSXVRQ3hQL0dRUGloOWJmbHorYVhsRDh3ZEpPb2FCZGNwWXFDODArYWlYTnV4NkNSS25ZOW1VbFQ0MUJ3b1NqODFmenE4dStRaiYjeEE7YWFjeFcrOHg2akpFbHBwaXRRcWtqOERQTXdyd1FiMEhWanNOcWtBcEFlaTRVUE9QelovUGJ5ZCtYTnY2TjR4MUhYWkY1VytqMjdBUyYjeEE7VUkyYVp6VVFvZkVnazlsTytLYWZKdm5qL25KYjgxUE5NenJIcWJhSHA1UHdXV2xsb0NCMCtLY0gxbXFPdnhjZllZRmVZWFY1ZDNjcCYjeEE7bXVwNUxpVnQya2xablkvTXNTY1VyN0hVdFIwK1lUMkYxTmFUcVFWbGdrYU53UjBJWkNEaXIxZnlOL3psSCthUGxxV09PL3ZmOFE2YSYjeEE7Q1BVdHRSSmVhbmZoZEQ5NkcvMXl3OXNVUHJYOHJ2emk4bi9tTnA3VGFQTVlkU2dRTmZhVFBRVHcxMkxDbTBrZGRnNisxYUhiQ2huTyYjeEE7S3Z5eXdNbllxK21mK2NiZitjaXRPMGJUNFBKZm5LNStyMk1KNDZQcThoSlNKV1ArODg1L1pRRS9BNTJVYkdnQXhRK3NMVzZ0cnUzaiYjeEE7dWJXWko3YVpROE0wVEIwZFR1R1ZscUNENGpDaFV4VjJLdXhWMkt2SFArY2p2enFQa0RRSTlMMGVRZjRxMVpHK3F0c2Zxc0FQRnJobCYjeEE7TmFzVDhNWU8xYW45bWhVaDhNM056Y1hWeExjM01yelhFenRKTk5JeFozZGpWbVpqVWtrbXBKd0pVOFZkaXJzVmRpcWVlUy9PZXY4QSYjeEE7azN6RGJhOW9Wd2JlOXR6Umw2eHl4a2puRkt2N1NQVGNmU053RGlyOUN2eTI4LzZUNTg4b1dmbUxUUjZhemd4M1ZxU0dhQzRTbnFSTSYjeEE7UjFvVFVIdXBCNzRXTEJmK2NqUHpwLzVWL3dDWDAwN1NYVSthZFhSaGFFMFAxYUhkV3VXWHhydEdEc1dxZHdwQlVoOEwzTnpjWFZ4TCYjeEE7YzNNcnozRXpHU2FhUmk3dTdHck16R3BKSjZrNEVxZUt1eFYyS3V4Vk92Si9uTHpGNVAxNkRYTkF1MnRMK0NvcjlwSkViN1VjaUhaMCYjeEE7YnVEOCtvQnhWZkJyV3E2NTUxdHRXMWE2ZTgxRzh2b1pibTVsTldaakl2MEFBYkFEWURZYllsUSs0L3o2L04rRDh1UEtnbXRlRXZtSCYjeEE7VXkwT2syNzdxcFVmdkozSGRJdVEyN3NRT2xhRkFmQk9xNnJxV3I2bGM2bnFkeTkzZjNibVc1dVpUeWQzYnFTY0NVTGlyc1ZkaXJzViYjeEE7VEh5OTVoMW55N3JOcnJPalhUMmVwV2JpU0NlTTdnOXdSMFpXR3pLZGlOamlyOUEveWQvTkhUL3pHOG53NnhDcVFhbENmUTFheFUxOSYjeEE7R2NDdFZCMzlPUWZFaFB5clVIQ3hmblhnWk94VjJLcG5vL21qek5vamN0RzFlOTB4anZXenVKYmMxSXAvdXRsN0hGWDZkWVdMc1ZkaSYjeEE7cTJTU09LTjVaWENSb0N6dXhBVlZBcVNTZWdHS3Z6ZC9ORHp0ZGVkZlBXcmVZWm1QcFhVeFd5alArNjdXUDRJVStoQUsrOVRnWk1XeCYjeEE7Vjd6K1FQOEF6amUzbmEyVHpONW5lUzI4dGNtVzB0WWp3bXZDaG96Yy93QmlJTUtWRzdiMHAxeFErc05DL0xieUJvTnZIQnBIbDZ3dCYjeEE7RmpIRU90dkcwcC8xNVhEU09kK3JNVGhwRnBSNXcvSTc4ci9OZG04R29hRmJXMDdBOEwrd2pTMXVVTktBK3BHbzUwN0J3eSsyS2JmRiYjeEE7bjV4ZmxCcm41YStZQlozVEc3MG04NVBwV3BCZUlsUmFja2NiOFpFcU9RK2tZRXNBeFY3My93QTRoZWZYMFh6MWNlV3JxVUxwbXZ3cyYjeEE7eUJ5QXFYVnFqU0s5VHNPVVFkVDRuajRZb0x6RDgxZk85eDUxOCs2djVna2RtZ3VKaWxnamZzV3NYd1FMVG9QZ0FKL3lpVGlsaWVLdiYjeEE7ZHZ5QS93Q2NjWlBQRUsrWlBNclMydmxnTVZ0WUl6d212R1FrTlJ2MklsWVVMRGNtb0ZPdUtIMW5vSDVhL2wvNWZ0MGcwank5WVdxbyYjeEE7S0NRUUk4cDdmRks0YVJqN3N4dzBpMHA4NGZraitXSG11MGVIVWRCdG9KMkI0WDlsR3RyY29UKzE2a1lIS25ZT0dIdGpTYmZGL3dDYyYjeEE7MzVPYXorV212SmF6U0c5MGE5QmZUTlNDOFE0WDdVY2czQ3lKWGNWM0ZEN0FKZWVZcW1IbDMvbElOTS81aTRQK1RpNGxXWi9uMzU3bCYjeEE7ODVmbWRxMThzdnFhZFpTSFQ5TUFOVityMnpGZWEvOEFHVitVbit5eFY1NWlyMlg4aFA4QW5IMjcvTVNSOVkxZVdTdzhyV3orbVpJeCYjeEE7U2E2a0gybzRTd0txcS90dlErQUZhbFZENis4dWZsWCtYWGx5MlNEUi9MMWpiK24wbWFGWlp6L3JUeTg1Vytsc05JdEQrYXZ5ZC9MVCYjeEE7elJheVE2cjVmdFBVa0JwZVc4UzI5eXJIOW9UUkJINjcwTlI0ZzQwbTN4dCtlWDVHNnArV3VxUnp3U1BmZVdiNXl0aGZzQnpSNmN2USYjeEE7bjQwVVNCUlVFVURnVkZLRUFLOHR4UzlmL3dDY1hQUE12bHI4MGJLd2trSTAzekRUVHJtT3Uzck9hMnIwL21FdEUrVEhGRHlERkxnSyYjeEE7bW5qaXIxTDh3djhBbkhIOHkvSjl6TTZhZkpyZWtLV01XcGFlalNqZ042eXdyeWtpSUhXbzQrREhGWGx6b3lNVWNGV1UwWlNLRUVlSSYjeEE7eFYrcG1GaTdGWFlxdzM4NWRVYlMvd0FxZk5kNGg0dU5NdUlvMjhHblF3cWR2QXlZbElmbkpnU21QbHpSNU5hOHc2WG8wUnBMcWQzQiYjeEE7Wnhud2FlVll4MTkyeFYrbVdsYVpZNlZwbHBwbGhFSUxLeWhTM3RvVjZMSEdvVlI5d3dzVVZpcnNWZVkvODVJK1U3YnpGK1VXdDg0dyYjeEE7MTFwTWY2VXM1TzZOYWd0SVJUeGc5UmZweFNId0JnU3IyVjdkV04xSGRXc2hpbmlKS1NMc1JVVVA0SEZWREZVZG9XbFRhdnJlbjZUQiYjeEE7L2Y2amN3MmtWQVNlYzhnalhZZGQyeFYrbW1rYVZZNlJwVm5wVmhHSWJHd2hqdHJhSWZzeHhLRVVmY01MRkY0cTdGWG12L09SZmxTMiYjeEE7OHgvbEZyeVNJRGNhVkEycTJraDZvOW1ESTVIK3REelQ2Y1VoK2ZtQktwYlhFdHRjeFhNUnBMQzZ5UmsveklhajhSaXFtU1NhbmNucSYjeEE7Y1ZYUm8wa2l4b0tzNUNxUGM3REZYNlplVGZMTmw1VzhxNlg1ZXNnQmI2YmJwQUdBcHpkUldTUSs4amtzZmM0V0tjNHE3RldHL25GNSYjeEE7VnRmTkg1YWVZTkttakVrbjFTVzRzelNyTGMyNm1XRXIzKzJsRFRzU08rSlNINXlZRW9qVGI2YlQ5UnRiK0FsWjdTYU9lSmdhRVBHdyYjeEE7ZFNEOHhpcWpMRkpESzhVaWxaSTJLT3A2aGxOQ01WVzRxL1REeUw1amg4eStUZEYxNkp4SitrYk9HZVFyMmxaQjZxN1UzV1RrcCtXRiYjeEE7aXE2MTVPOG82NjNMV3RFc05UZW5IbmQyME03QWV6U0t4R0tweGlxQzF6VjdQUmRGdjlYdkc0Mm1uMjh0MU8zVDRJVUx0K0F4VitZZCYjeEE7eFBKUGNTenlHc2tyczduYzFMR3A2NEdTNjB0TGk3bTlHM1F2THhkd282a1JvWGIvQUlWVGlxamlxYWVWdFpPaCtaOUkxb0x6T2wzdCYjeEE7dGVoZkUyOHF5MC80WEZYNloyVjVhM3RuQmUya3F6V3R6R2sxdk1ocXJ4eUtHUmxQZ1ZOY0xGV3hWMktySjRJWjRaSUo0MWxnbFVwTCYjeEE7RTRESXlNS01yS2RpQ09veFZLZjhGZVRmK3JEcDMvU0pCL3pSZ3BOc1QvTm55TDVaay9MTHpTTExSYkNHN2oweTZsZ2tqdFlWY1BGRSYjeEE7MGc0bFZCRGZEdGpTMi9QZkZLWmVXdFlmUmZNZWxheWdKZlRMeTN2RkE2a3dTcklPdityaXI5TkxHOXRMK3l0NzZ6a0UxcGR4SlBieiYjeEE7TDBlT1JReU1LOWlwcmhZcStLdXhWNTcrZi9tUzIwSDhvZk1zOHhYbmZXajZiYnhzYUY1TDBHQ2krSlZIWi9rdUtoK2VtQmtqTkcwcSYjeEE7ODFmVnJMU3JLTXkzZC9QSGJXOGFpcFo1V0NLQjlKeFZCNHF1aWthS1ZKRm9XUmd3QjZWQnJpcjlPdkxtdTJQbURRTk8xdXhibGFhbCYjeEE7YngzTU80SkN5cUc0bW43UzFvZmZDeFRIRlhZcTB5cXlsV0FLa1VJTzRJT0twUDhBNEs4bS93RFZoMDcvQUtSSVArYU1GSnQzK0N2SiYjeEE7di9WaDA3L3BFZy81b3hwYmZDSC9BRGtENU5sOHFmbXJyZG9JeWxsZnluVXJCcWNWTU4wUzVDKzBjbk9QL1k0cGVkWXE5Ny81eHcvNSYjeEE7eUN0ZkpLdjVZOHp2SWZMYzhucVdkMm9NaHM1WFA3emtncXhpZjdSNDdxMVRROGppaDlpNk5ybWphM1lKcUdqMzBHb1dNbjJMbTJrVyYjeEE7VkNhQTA1S1RRaXU0NjRVTjZ0ck9rYU5ZdmY2dGV3YWZaUi9idWJtUklvd2ZEazVBcmlyNUYvNXlMLzV5TXMvTmxtL2xMeWk3blFpeSYjeEE7dHFXcE1yUm02S0hrc1VTdFJoRUdBSkxBRmoyQUh4Qkw1NHhTOXMvNXhOOGxMNWcvTWlUVWJxQVRhWm90bk05d0hGVWFTNlJyZU9NKyYjeEE7NVY1R0grcmloNW4rWUhsQzg4bitjdFc4dVhZUFBUN2hvNHBHRlBVaFB4UXkvd0N6alpXeFN4L0ZYMGovQU00Ny93RE9TVm41ZHNJUCYjeEE7S0huT1ZrMG1INGRLMWFqUDlYQk5mUm5BcTNwZnlNQjhQUS9EdXFpbjFocFdzNlJxOW10N3BOOUJxRm0vMkxpMWxTYU0vSmtMRENoSyYjeEE7dk4vNWdlVGZKOWsxMzVpMVdDd1VMeVNGMkJuazlvNFZySTUvMVZ4VmovNVZmbmI1US9NaEx5UFNqSmFhalpPeGswNjY0aVpvT1ZFbiYjeEE7UUtTR1U3Y3FmWmJZOWlWWG9PS3JKNEliaUNTQ1pCSkRLcFNTTnR3eXNLRUg1akZYNXMvbU41T3UvSnZuYlYvTGx5RC9BS0RPeTI4aiYjeEE7ZjdzdDMrT0NUL1p4c3A5anRnWk1ieFY5Ry84QU9PLy9BRGtqWitXZFBoOG9lY1haZEhpSkdsNnFBem0zREdwaG1WUVdhT3ArRmhVciYjeEE7MCt6VGlvZldla2EzbzJzMmEzdWtYMXZxRm0vMmJpMWxTYU05NmNrSkZjS0V0ODIrZmZKL2xDeWE3OHhhdGI2ZWdYbWtVamd6U0RwKyYjeEE7NmhXc2tuK3hVNHErSS96Mi9PKy8vTXJXWTRiWkhzL0xPbk94MDJ6ZW5xT3hGRFBQUWtjeU5sWG9vMkhVa2hMeTNGTDJ6L25FdnlUTCYjeEE7cjM1bXByTXNmTFQvQUM1RTExSXhGVk54S0RIYnBYc2FscEIvcVlvWVgrZFhraVR5WitaV3M2T0l5bGsweHU5Tk5DRk5yY0V5UmhhOSYjeEE7ZUZUR1Q0cWNVc0h4Vjd6L0FNNDcvd0RPUkVma21NZVdQTTVrazhzeVNGN1M3UUYzc25jMWY0QlZtaVpqeUlYZFRVZ0d1S0gySG9YbSYjeEE7UFFQTUZpdDlvbW8yK3BXalUvZlcwaXlxQ1JXamNTZUxleDN3b1EvbWJ6bDVWOHJXUnZmTU9xVyttMjRCS21kd3J2VHRIR0t2SWZaUSYjeEE7VGlyRHZ5eS9QenlUK1lXczZqcEdsbVcydmJSbWUxanVRRk4xYnJRR2FNRHBROVVQeFVvZkhpcHA2VmloMkt2SS93RG5JMzhubi9NRCYjeEE7eXFsMXBVYW56TG8vT1N3Qm92cnhNS3lXeFk5MjRncFhZTjRCaWNVaDhKWE50Y1d0eExiWE1UdzNFTHRITkRJcFYwZFRSbFpUUWdnaSYjeEE7aEJ3SlU4VlJOaHFtcGFkTjYrbjNjMW5OU25xMjhqeE5UL1dRZzRxNi93QlUxTFVadlgxQzdtdkpxVTlXNGtlVnFmNnprbkZVTmlxdiYjeEE7WTJONWYzc0ZsWlF2Y1hkeklzTnZCR0N6dkk1NHFxZ2RTU2NWZm9GK1JYNVhKK1hua2FEVHJnSzJ0M3JmVzlZbFdoSHJNQUZpVmgxVyYjeEE7SmFMMTNQSWpyaFFXR2Y4QU9ULzVLVGVjTklUelJvTUhxZVk5S2lLejJ5Q3IzZHFLdHdVRDdVc1pKS2VJSkc1NDRGRDRwSUlKQkZDTiYjeEE7aURpbDJLcjQ1cG9pVEU3SVQxS2tqOVdLcldkbllzNUxNZXJFMUp4Vk12TFBtWFcvTE91V210NkpkTlo2bFp2emhtVDdtVmdkbVZocyYjeEE7eW5ZakZYM3YrVEg1eGFOK1pQbDRYRWZDMTE2MEFYVmRNRFZLTjBFc2RkekUvYncreWZFbEZQUThVUERmK2NtL3lVbjg2NlJINWowRyYjeEE7RXkrWnRKaktOYklCeXU3VUVzWTE4Wkl5U3llTlN1NUl3SkQ0bGRIUjJSMUt1cElaU0tFRWJFRUhGTFdLcjQ1cG9pVEU3SVQxS2tqOSYjeEE7V0tyWGQzWXM3Rm1QVmlhay9maXJXS3BqNWU4dmF4NWkxbTEwYlJyVjd6VXIxeEhid1JqY25xU1QwVlZHN01kZ056aXI5Qi95aC9MUCYjeEE7VC95NzhtVzJod0ZacjV6OVkxUzhVSDk5Y3VBR0lydndVQUtnOEJYcVRoWXNYLzV5TS9Kby9tRDVaUzkwcEYveFBvNnU5aURSZnJFUiYjeEE7M2UyTGVKcFdPdXdid0RFNHBENFR1YmE0dGJpVzJ1WW5odUlYYU9hR1JTcm82bWpLeW1oQkJGQ0RnU3A0cXVqbGxpYmxHN0l4RkNWSiYjeEE7QnA5R0t1ZVNTUmk4akYyUFZtTlQ5NXhWRWFWcXVwYVJxVnRxZW1YTDJsL2FPSmJhNWlQRjBkZWhCeFY5MmZrUCtlV20vbUpveTJkOCYjeEE7NlczbXl5akgxK3pId3JNbzIrc1FEdXAvYVg5aysxQ1NndlY4VU94VjVGK2NmL09PWGxmOHdHazFXemNhUDVuNC93Qzl5THlpdUNvbyYjeEE7b3VZeFNwN2VvdnhBZnpBQVlwdDhtK2RmeUsvTS93QW55U0hVdEZtdUxKS2thallnM051VkJweVpveHlqSC9HUlZPQkxBU0NEUTdFZCYjeEE7UmlyZ0NTQUJVbllBWXF6L0FNbGZrVCthSG0rV002ZG9zMXRaUFN1bzM0TnJiaFNhY2cwZ0RTQWY4VnF4eFY5YmZrMS96ajE1WS9MdCYjeEE7VjFLZGhxM21kMG8rb3lJQWtISVVaTFpEWGhYb1hQeEVlQUpYQ2kzckdLSFlxOFAvQURsLzV4aDBIenJjVGEzNWZsajBYekpLZVU5ViYjeEE7UDFTNWJ1MHFvQzBibnU2QTE3cVNhNHB0OG4rYy93QXAvd0F3ZkpzenByMmkzRUVDR2d2bzE5YTFidUtUeDhvK25ZbXZpTUNXSllxMiYjeEE7aU03QkVCWm1ORlVDcEpQZ01WZW4rUVArY2Mvek44NFRSdU5PYlJ0TGFoZlVkU1ZvVjRudkhFUjZzaE5OcUx4OFdHS3ZzRDhxUHlaOCYjeEE7cWZsdnByUmFZcHV0V3VWQzMrcnpBQ2FXaHJ3VUNvampydndIdFVraXVGaXozRlhZcThUL0FEbC81eGs4ditlSjU5YjBPVk5HOHpTMSYjeEE7YVp5cCtxWFQrTXlxT1NPVDFrVUgzVmp2aW0zeWI1ei9BQ2svTVB5YkxJTmUwVzRodGtOQmZ4TDYxcXc3RVR4OGtGZkJpRDdZRXNReCYjeEE7VnRWWjJDcUN6TWFLbzNKSjdERlhwbmtML25IYjh6L09Fc1VrZW1QcE9sdVFYMUxVUVlFNG5lc2NiRDFaYWpweFduaVJpcjdCL0tmOCYjeEE7bGZLWDViMkRMcHlmWE5ZdUZDM3VzVHFCTklLMTRJTi9TanJ2eFU3N2NpYURDeFovaXJzVmVSZm5ML3pqbjVaL01FdnF0azY2UDVuNCYjeEE7ME44aVZpdU9JK0VYS0NsVDI5UWZFQi9NQUJpbTN5UDUzL0pYOHl2SmtraDFqUnBtc2tKcHFWb0RjV3BVR25JeVJnOEs5aElGUHRnUyYjeEE7d2ZGWEFFbWczSjZERlhvZmtUOGhQek84NVN4Tlk2VEpaYWRKUW5VOVFEVzF2eFA3U2NoemwvNTVxMkt2cjc4b1B5RzhxL2x2QWJtRiYjeEE7anFYbUdaT0Z6cTB5aFNGUFZJSTZ0NmFIdnVXUGMwMkJSYjB6RkRzVmRpcnNWWXA1bS81VlY5YVArS1AwRjliMnIray9xZnFkRHgvdiYjeEE7L2k4YVlFcXZsai9sV2Zxai9DLzZGOVhmaitqUHF2TG9hMDlEZnBYRldUWVVPeFYyS3V4VjJLdXhWaEdzZjhxUyt1TittZjhBRFgxeiYjeEE7OXI2NTlROVg2ZlUrTEJzbmRNZksvd0R5clQxVC9oWDlDK3J2WDlGL1ZlWGV2OXh2aXJKc0tIWXE3RlhZcTdGWFlxd25XdjhBbFNuMSYjeEE7eHYwMy9odjY3VTgvcnYxRDFhOTYrcjhWY0d5ZDBmNVgvd0NWWmV2L0FNNnIraGZYb2Y4QWpsL1ZPZE8vOXh2aXJKOEtIWXE3RlhZcSYjeEE7N0ZYWXF3M3pCL3lwMzY2LytJZjhQZlh1UjlUOUlmVWZWNS90Y3ZXK0t2amdUdXIrV2Y4QWxWWDFvZjRYL1FYMXZlbjZNK3ArcDBITCYjeEE7KzQrTHdyaXJLOEtIWXE3RlgvL1o8L3htcEdJbWc6aW1hZ2U+CiAgICAgICAgICAgICAgIDwvcmRmOmxpPgogICAgICAgICAgICA8L3JkZjpBbHQ+CiAgICAgICAgIDwveG1wOlRodW1ibmFpbHM+CiAgICAgICAgIDx4bXBNTTpJbnN0YW5jZUlEPnhtcC5paWQ6Zjc4ZDlhYmEtMDBlNS00YWRmLWIwNTktZTE4NmNkN2MwYzA4PC94bXBNTTpJbnN0YW5jZUlEPgogICAgICAgICA8eG1wTU06RG9jdW1lbnRJRD54bXAuZGlkOmY3OGQ5YWJhLTAwZTUtNGFkZi1iMDU5LWUxODZjZDdjMGMwODwveG1wTU06RG9jdW1lbnRJRD4KICAgICAgICAgPHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD51dWlkOjVEMjA4OTI0OTNCRkRCMTE5MTRBODU5MEQzMTUwOEM4PC94bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ+CiAgICAgICAgIDx4bXBNTTpSZW5kaXRpb25DbGFzcz5wcm9vZjpwZGY8L3htcE1NOlJlbmRpdGlvbkNsYXNzPgogICAgICAgICA8eG1wTU06RGVyaXZlZEZyb20gcmRmOnBhcnNlVHlwZT0iUmVzb3VyY2UiPgogICAgICAgICAgICA8c3RSZWY6aW5zdGFuY2VJRD54bXAuaWlkOjQ4NjlmNDYyLTRhMTQtNDdiMS1hMTAxLTM2ZjA0ZTM1OTk5Njwvc3RSZWY6aW5zdGFuY2VJRD4KICAgICAgICAgICAgPHN0UmVmOmRvY3VtZW50SUQ+eG1wLmRpZDo0ODY5ZjQ2Mi00YTE0LTQ3YjEtYTEwMS0zNmYwNGUzNTk5OTY8L3N0UmVmOmRvY3VtZW50SUQ+CiAgICAgICAgICAgIDxzdFJlZjpvcmlnaW5hbERvY3VtZW50SUQ+dXVpZDo1RDIwODkyNDkzQkZEQjExOTE0QTg1OTBEMzE1MDhDODwvc3RSZWY6b3JpZ2luYWxEb2N1bWVudElEPgogICAgICAgICAgICA8c3RSZWY6cmVuZGl0aW9uQ2xhc3M+cHJvb2Y6cGRmPC9zdFJlZjpyZW5kaXRpb25DbGFzcz4KICAgICAgICAgPC94bXBNTTpEZXJpdmVkRnJvbT4KICAgICAgICAgPHhtcE1NOkhpc3Rvcnk+CiAgICAgICAgICAgIDxyZGY6U2VxPgogICAgICAgICAgICAgICA8cmRmOmxpIHJkZjpwYXJzZVR5cGU9IlJlc291cmNlIj4KICAgICAgICAgICAgICAgICAgPHN0RXZ0OmFjdGlvbj5zYXZlZDwvc3RFdnQ6YWN0aW9uPgogICAgICAgICAgICAgICAgICA8c3RFdnQ6aW5zdGFuY2VJRD54bXAuaWlkOjM0MzY1Zjc0LTNkZTAtNGUzMC1hMTI3LTNjN2ZlYzNlNGFhNjwvc3RFdnQ6aW5zdGFuY2VJRD4KICAgICAgICAgICAgICAgICAgPHN0RXZ0OndoZW4+MjAyNS0wNi0xOVQyMDozNzozMyswODowMDwvc3RFdnQ6d2hlbj4KICAgICAgICAgICAgICAgICAgPHN0RXZ0OnNvZnR3YXJlQWdlbnQ+QWRvYmUgSWxsdXN0cmF0b3IgMjQuMiAoTWFjaW50b3NoKTwvc3RFdnQ6c29mdHdhcmVBZ2VudD4KICAgICAgICAgICAgICAgICAgPHN0RXZ0OmNoYW5nZWQ+Lzwvc3RFdnQ6Y2hhbmdlZD4KICAgICAgICAgICAgICAgPC9yZGY6bGk+CiAgICAgICAgICAgICAgIDxyZGY6bGkgcmRmOnBhcnNlVHlwZT0iUmVzb3VyY2UiPgogICAgICAgICAgICAgICAgICA8c3RFdnQ6YWN0aW9uPnNhdmVkPC9zdEV2dDphY3Rpb24+CiAgICAgICAgICAgICAgICAgIDxzdEV2dDppbnN0YW5jZUlEPnhtcC5paWQ6Zjc4ZDlhYmEtMDBlNS00YWRmLWIwNTktZTE4NmNkN2MwYzA4PC9zdEV2dDppbnN0YW5jZUlEPgogICAgICAgICAgICAgICAgICA8c3RFdnQ6d2hlbj4yMDI2LTAzLTE5VDE5OjM2OjA4KzA4OjAwPC9zdEV2dDp3aGVuPgogICAgICAgICAgICAgICAgICA8c3RFdnQ6c29mdHdhcmVBZ2VudD5BZG9iZSBJbGx1c3RyYXRvciAzMC4yIChNYWNpbnRvc2gpPC9zdEV2dDpzb2Z0d2FyZUFnZW50PgogICAgICAgICAgICAgICAgICA8c3RFdnQ6Y2hhbmdlZD4vPC9zdEV2dDpjaGFuZ2VkPgogICAgICAgICAgICAgICA8L3JkZjpsaT4KICAgICAgICAgICAgPC9yZGY6U2VxPgogICAgICAgICA8L3htcE1NOkhpc3Rvcnk+CiAgICAgICAgIDxpbGx1c3RyYXRvcjpTdGFydHVwUHJvZmlsZT5QcmludDwvaWxsdXN0cmF0b3I6U3RhcnR1cFByb2ZpbGU+CiAgICAgICAgIDxpbGx1c3RyYXRvcjpDcmVhdG9yU3ViVG9vbD5BSVJvYmluPC9pbGx1c3RyYXRvcjpDcmVhdG9yU3ViVG9vbD4KICAgICAgICAgPGlsbHVzdHJhdG9yOklzRmlsZVNhdmVkVmlhSW5zdGFudFNhdmU+VHJ1ZTwvaWxsdXN0cmF0b3I6SXNGaWxlU2F2ZWRWaWFJbnN0YW50U2F2ZT4KICAgICAgICAgPHBkZjpQcm9kdWNlcj5BZG9iZSBQREYgbGlicmFyeSAxOC4wMDwvcGRmOlByb2R1Y2VyPgogICAgICA8L3JkZjpEZXNjcmlwdGlvbj4KICAgPC9yZGY6UkRGPgo8L3g6eG1wbWV0YT4KICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIAogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg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" alt="TCDC Logo" style="height:38px;width:auto;filter:invert(1);flex-shrink:0;">
+    <div class="logo-text">
+      <h1 id="header-title">POKER TOURNAMENT</h1>
+      <p id="header-sub">師大德州撲克錦標賽統計系統</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <button class="lang-btn" onclick="toggleLang()">EN / 中文</button>
+  </div>
+</header>
+
+<nav>
+  <div class="tab active" onclick="showTab('dashboard')" data-zh="📊 總覽" data-en="📊 Dashboard">📊 總覽</div>
+  <div class="tab" onclick="showTab('leaderboard')" data-zh="🏆 排行榜" data-en="🏆 Leaderboard">🏆 排行榜</div>
+  <div class="tab" onclick="showTab('awards')" data-zh="🎖️ 特殊獎項" data-en="🎖️ Special Awards">🎖️ 特殊獎項</div>
+  <div class="tab" onclick="showTab('entry')" data-zh="✏️ 登錄比賽" data-en="✏️ Enter Game">✏️ 登錄比賽</div>
+  <div class="tab" onclick="showTab('history')" data-zh="📋 歷史紀錄" data-en="📋 History">📋 歷史紀錄</div>
+  <div class="tab" onclick="showTab('config')" data-zh="⚙️ 設定" data-en="⚙️ Settings">⚙️ 設定</div>
+</nav>
+
+<main>
+
+<!-- DASHBOARD -->
+<div class="section active" id="sec-dashboard">
+  <div class="season-bar">
+    <label data-zh="賽季" data-en="Season">賽季</label>
+    <select class="select-styled" id="dash-season" onchange="renderDashboard()">
+      <option value="2025">2025</option><option value="2024">2024</option>
+    </select>
+    <span style="margin-left:auto;font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1px" id="last-update-label"></span>
+  </div>
+  <div class="mvp-grid">
+    <div class="mvp-card">
+      <div class="crown">🏆</div>
+      <div class="title" data-zh="總MVP" data-en="Overall MVP">總MVP</div>
+      <div class="name" id="mvp-overall">—</div>
+      <div class="pts" id="mvp-overall-pts"></div>
+    </div>
+    <div class="mvp-card">
+      <div class="crown">👸</div>
+      <div class="title" data-zh="女子MVP" data-en="Female MVP">女子MVP</div>
+      <div class="name" id="mvp-female">—</div>
+      <div class="pts" id="mvp-female-pts"></div>
+    </div>
+    <div class="mvp-card">
+      <div class="crown">👑</div>
+      <div class="title" data-zh="男子MVP" data-en="Male MVP">男子MVP</div>
+      <div class="name" id="mvp-male">—</div>
+      <div class="pts" id="mvp-male-pts"></div>
+    </div>
+  </div>
+  <div class="stats-grid" id="dash-stats"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px;">
+    <div>
+      <div class="sec-divider" data-zh="📈 積分排行 TOP 5" data-en="📈 Points TOP 5">📈 積分排行 TOP 5</div>
+      <div class="table-wrap" id="dash-top5"></div>
+    </div>
+    <div>
+      <div class="sec-divider" data-zh="💰 獎金王 TOP 5" data-en="💰 Prize King TOP 5">💰 獎金王 TOP 5</div>
+      <div class="table-wrap" id="dash-prize5"></div>
+    </div>
+  </div>
+  <div class="sec-divider" data-zh="📈 MVP 積分走勢圖" data-en="📈 MVP Score Trend">📈 MVP 積分走勢圖</div>
+  <div style="background:var(--bg2);border:1px solid var(--border);padding:24px 20px;">
+    <canvas id="mvp-trend-chart" height="110"></canvas>
+  </div>
+</div>
+
+<!-- LEADERBOARD -->
+<div class="section" id="sec-leaderboard">
+  <div class="season-bar">
+    <label data-zh="賽季" data-en="Season">賽季</label>
+    <select class="select-styled" id="lb-season" onchange="renderLeaderboard()">
+      <option value="2025">2025</option><option value="2024">2024</option>
+    </select>
+  </div>
+  <div class="lb-tabs">
+    <div class="lb-tab active" onclick="setLbView('all')" data-zh="全體" data-en="All">全體</div>
+    <div class="lb-tab" onclick="setLbView('male')" data-zh="男子" data-en="Male">男子</div>
+    <div class="lb-tab" onclick="setLbView('female')" data-zh="女子" data-en="Female">女子</div>
+  </div>
+  <div class="table-wrap" id="lb-table"></div>
+</div>
+
+<!-- AWARDS -->
+<div class="section" id="sec-awards">
+  <div class="season-bar">
+    <label data-zh="賽季" data-en="Season">賽季</label>
+    <select class="select-styled" id="aw-season" onchange="renderAwards()">
+      <option value="2025">2025</option><option value="2024">2024</option>
+    </select>
+  </div>
+  <div class="awards-grid" id="awards-grid"></div>
+</div>
+
+<!-- ENTRY -->
+<div class="section" id="sec-entry">
+  <div class="form-section">
+    <h2 data-zh="🎮 登錄新比賽" data-en="🎮 Enter New Game">🎮 登錄新比賽</h2>
+    <div class="form-grid">
+      <div class="form-group">
+        <label data-zh="比賽日期" data-en="Date">比賽日期</label>
+        <input type="date" id="game-date">
+      </div>
+      <div class="form-group">
+        <label data-zh="賽季" data-en="Season">賽季</label>
+        <select id="game-season"><option value="2025">2025</option><option value="2024">2024</option></select>
+      </div>
+      <div class="form-group">
+        <label data-zh="場次" data-en="Session">場次</label>
+        <select id="game-session">
+          <option value="1">Session 1</option><option value="2">Session 2</option>
+          <option value="3">Session 3</option><option value="4">Session 4</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label data-zh="報名費 (每人)" data-en="Entry Fee">報名費 (每人)</label>
+        <input type="number" id="game-entry-fee" placeholder="500" value="500">
+      </div>
+      <div class="form-group">
+        <label data-zh="公積金 (總)" data-en="Pool Fund">公積金 (總)</label>
+        <input type="number" id="game-pool" placeholder="0" value="0">
+      </div>
+    </div>
+    <div style="margin-bottom:10px;font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase" data-zh="選手成績 (依名次填入，第一名填1)" data-en="Player Results (1 = 1st place)">選手成績 (依名次填入，第一名填1)</div>
+    <div class="player-row header">
+      <span data-zh="選手名稱" data-en="Player">選手名稱</span>
+      <span data-zh="名次" data-en="Rank">名次</span>
+      <span data-zh="買入" data-en="Buy-in">買入</span>
+      <span data-zh="重買次數" data-en="Rebuys">重買次</span>
+      <span data-zh="獎金" data-en="Prize">獎金</span>
+      <span data-zh="有發牌" data-en="Dealt">發牌</span>
+      <span></span>
+    </div>
+    <div class="player-entries" id="player-entries"></div>
+    <button class="add-player-btn" onclick="addPlayerRow()">+ <span data-zh="新增選手" data-en="Add Player">新增選手</span></button>
+    <div style="margin-top:18px;display:flex;gap:10px;flex-wrap:wrap;">
+      <button class="btn" onclick="saveGame()">💾 <span data-zh="儲存比賽" data-en="Save Game">儲存比賽</span></button>
+      <button class="btn outline" onclick="clearEntry()">🗑️ <span data-zh="清除" data-en="Clear">清除</span></button>
+    </div>
+  </div>
+  <div class="form-section">
+    <h2 data-zh="👥 管理選手名單" data-en="👥 Manage Players">👥 管理選手名單</h2>
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <input type="text" id="new-player-name" placeholder="選手名字" style="flex:1;min-width:150px;">
+      <select id="new-player-gender"><option value="M">男 Male</option><option value="F">女 Female</option></select>
+      <button class="btn" onclick="addPlayer()">新增</button>
+    </div>
+    <div class="table-wrap" id="player-list-table"></div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<div class="section" id="sec-history">
+  <div class="history-filters">
+    <select class="select-styled" id="hist-season" onchange="renderHistory()">
+      <option value="all" data-zh="全部賽季" data-en="All Seasons">全部賽季</option>
+      <option value="2025">2025</option><option value="2024">2024</option>
+    </select>
+    <select class="select-styled" id="hist-player" onchange="renderHistory()">
+      <option value="all" data-zh="全部選手" data-en="All Players">全部選手</option>
+    </select>
+    <button class="btn danger" onclick="clearHistory()" style="margin-left:auto">⚠️ <span data-zh="清除所有資料" data-en="Clear All Data">清除所有資料</span></button>
+  </div>
+  <div class="table-wrap" id="history-table"></div>
+</div>
+
+<!-- CONFIG -->
+<div class="section" id="sec-config">
+  <div class="config-section">
+    <div class="config-block">
+      <h3 data-zh="🔗 Google 試算表連結" data-en="🔗 Google Sheets Connection">🔗 Google 試算表連結</h3>
+      <div class="sheet-url-bar">
+        <input type="text" id="sheet-url" placeholder="貼上 Google Apps Script Web App URL">
+        <button class="btn" onclick="saveSheetUrl()">連結</button>
+        <button class="btn outline" onclick="testSheet()">測試</button>
+        <button class="btn secondary" onclick="manualSync()">🔄 立即同步</button>
+      </div>
+      <div style="font-size:12px;color:var(--text3);margin-bottom:16px" data-zh="連結後，資料會同步儲存到 Google 試算表，並可從任何裝置讀取。" data-en="Once connected, data syncs to Google Sheets and can be accessed from any device.">連結後，資料會同步儲存到 Google 試算表，並可從任何裝置讀取。</div>
+      <div class="setup-steps">
+        <div class="setup-step"><div class="content"><h4 data-zh="建立 Google 試算表" data-en="Create Google Sheet">建立 Google 試算表</h4><p data-zh="前往 sheets.google.com，建立新試算表，命名為「撲克錦標賽」" data-en="Go to sheets.google.com, create new spreadsheet named 'Poker Tournament'">前往 sheets.google.com，建立新試算表，命名為「撲克錦標賽」</p></div></div>
+        <div class="setup-step"><div class="content"><h4 data-zh="開啟 Apps Script" data-en="Open Apps Script">開啟 Apps Script</h4><p data-zh="在試算表中點選「擴充功能」→「Apps Script」" data-en="In the spreadsheet, click 'Extensions' → 'Apps Script'">在試算表中點選「擴充功能」→「Apps Script」</p></div></div>
+        <div class="setup-step">
+          <div class="content">
+            <h4 data-zh="貼上以下程式碼" data-en="Paste this code">貼上以下程式碼</h4>
+            <div class="code-box" id="gas-code">function doPost(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var data = JSON.parse(e.postData.contents);
+  var sheet = ss.getSheetByName(data.sheet) || ss.insertSheet(data.sheet);
+  if (data.action === 'append') { sheet.appendRow(data.row); }
+  else if (data.action === 'write') { sheet.clearContents(); data.rows.forEach(function(r){ sheet.appendRow(r); }); }
+  return ContentService.createTextOutput(JSON.stringify({ok:true})).setMimeType(ContentService.MimeType.JSON);
+}
+function doGet(e) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(e.parameter.sheet);
+  if (!sheet) return ContentService.createTextOutput(JSON.stringify({rows:[]})).setMimeType(ContentService.MimeType.JSON);
+  var rows = sheet.getDataRange().getValues();
+  return ContentService.createTextOutput(JSON.stringify({rows:rows})).setMimeType(ContentService.MimeType.JSON);
+}</div>
+            <button class="btn outline" style="margin-top:8px;font-size:12px" onclick="copyCode()">複製程式碼</button>
+          </div>
+        </div>
+        <div class="setup-step"><div class="content"><h4 data-zh="部署為網頁應用程式" data-en="Deploy as Web App">部署為網頁應用程式</h4><p data-zh="點選「部署」→「新增部署」→「網頁應用程式」→「任何人均可存取」→「部署」，複製 URL 貼到上方欄位" data-en="Click 'Deploy' → 'New deployment' → 'Web app' → 'Anyone' → 'Deploy', copy URL above">點選「部署」→「新增部署」→「網頁應用程式」→「任何人均可存取」→「部署」，複製 URL 貼到上方欄位</p></div></div>
+      </div>
+    </div>
+    <div class="config-block">
+      <h3 data-zh="📊 積分規則" data-en="📊 Scoring Rules">📊 積分規則</h3>
+      <div class="formula-box">
+        <strong>名次積分 (A)：</strong>第1名 = 6分 / 第2名 = 3分 / 第3名 = 1分<br>
+        <strong>MVP 積分公式：</strong>(A)×33% + (B名次積分)×33% + (C近期參賽率)×34%<br>
+        <strong>最低出席場次：</strong><input type="number" id="min-games" value="3" style="width:60px;display:inline;padding:2px 6px;"> 場（適用於比率類獎項）<br>
+        <strong>近期參賽率：</strong>取最後 6 場計算
+      </div>
+      <div class="config-row">
+        <div>
+          <label data-zh="最低出席場次（比率類獎項）" data-en="Min Games (ratio awards)">最低出席場次（比率類獎項）</label>
+          <small data-zh="適用：臭緊B、藏鏡人、和平大使、孔融讓梨、PK King 等" data-en="Applies to: ratio-based awards">適用：臭緊B、藏鏡人、和平大使、孔融讓梨、PK King 等</small>
+        </div>
+        <input type="number" id="cfg-min-games" value="3" onchange="saveConfig()" style="width:80px;">
+      </div>
+      <div class="config-row">
+        <div>
+          <label data-zh="拍照資格（名次內才算）" data-en="Photo eligible placement">拍照資格（名次內才算）</label>
+          <small data-zh="前三名可拍照" data-en="Top 3 can take photos">前三名可拍照</small>
+        </div>
+        <input type="number" id="cfg-photo-rank" value="3" onchange="saveConfig()" style="width:80px;">
+      </div>
+    </div>
+    <div class="config-block">
+      <h3 data-zh="🗂️ 匯出資料" data-en="🗂️ Export Data">🗂️ 匯出資料</h3>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn outline" onclick="exportJSON()">📥 匯出 JSON</button>
+        <button class="btn outline" onclick="exportCSV()">📊 匯出 CSV</button>
+        <button class="btn outline" onclick="importData()">📤 匯入 JSON</button>
+        <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(event)">
+      </div>
+    </div>
+    <div class="config-block" style="border-color:rgba(200,16,46,0.3);">
+      <h3 style="color:var(--red)">🧪 測試資料</h3>
+      <p style="font-size:13px;color:var(--text2);margin-bottom:14px;">載入 10 位選手、10 場比賽的測試資料（會覆蓋現有所有資料）。</p>
+      <button class="btn danger" onclick="loadSampleData()">🧪 載入測試資料</button>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+let DB = { players: [], games: [], config: { minGames: 3, photoRank: 3 }, sheetUrl: '' };
+let lang = 'zh';
+let lbView = 'all';
+
+function loadDB() {
+  const raw = localStorage.getItem('pokerDB');
+  if (raw) { try { DB = { ...DB, ...JSON.parse(raw) }; } catch(e) {} }
+  if (!DB.players) DB.players = [];
+  if (!DB.games) DB.games = [];
+  if (!DB.config) DB.config = { minGames: 3, photoRank: 3 };
+}
+function saveDB() {
+  localStorage.setItem('pokerDB', JSON.stringify(DB));
+  if (DB.sheetUrl) syncToSheet();
+}
+function syncToSheet() {
+  if (!DB.sheetUrl) return;
+  fetch(DB.sheetUrl, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sheet: 'PokerData', action: 'write', rows: [['DATA', JSON.stringify(DB)]] }) }).catch(() => {});
+}
+
+// ── 從 Google Sheets 同步資料回來 ──
+function syncFromSheet(callback) {
+  if (!DB.sheetUrl) { if(callback) callback(false,'未設定 Google Sheets URL'); return; }
+  const url = DB.sheetUrl + '?sheet=PokerData';
+  fetch(url)
+    .then(r => r.json())
+    .then(data => {
+      if (!data.rows || !data.rows.length) { if(callback) callback(false,'試算表無資料'); return; }
+      // 找最後一筆 DATA 列
+      const dataRow = [...data.rows].reverse().find(r => r[0] === 'DATA');
+      if (!dataRow) { if(callback) callback(false,'試算表中找不到資料'); return; }
+      const parsed = JSON.parse(dataRow[1]);
+      DB = { ...DB, ...parsed };
+      // 保留目前的 sheetUrl（避免被覆蓋成空的）
+      if (!DB.sheetUrl) DB.sheetUrl = document.getElementById('sheet-url').value.trim();
+      localStorage.setItem('pokerDB', JSON.stringify(DB));
+      renderAll();
+      if(callback) callback(true);
+    })
+    .catch(err => { if(callback) callback(false, err.message || '網路錯誤'); });
+}
+
+function toggleLang() {
+  lang = lang === 'zh' ? 'en' : 'zh';
+  document.querySelectorAll('[data-zh]').forEach(el => { el.textContent = el.getAttribute('data-' + lang); });
+  document.getElementById('header-sub').textContent = lang === 'zh' ? '師大德州撲克錦標賽統計系統' : "NTNU Texas Hold'em Tournament Tracker";
+  document.getElementById('header-title').textContent = 'POKER TOURNAMENT';
+  renderAll();
+}
+
+function showTab(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+  if (name === 'leaderboard') renderLeaderboard();
+  if (name === 'awards') renderAwards();
+  if (name === 'history') renderHistory();
+  if (name === 'entry') { renderPlayerList(); updatePlayerDropdowns(); }
+  if (name === 'config') loadConfig();
+}
+function setLbView(v) {
+  lbView = v;
+  document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
+  event.currentTarget.classList.add('active');
+  renderLeaderboard();
+}
+
+function addPlayer() {
+  const name = document.getElementById('new-player-name').value.trim();
+  const gender = document.getElementById('new-player-gender').value;
+  if (!name) return notify('請輸入選手名字', true);
+  if (DB.players.find(p => p.name === name)) return notify('選手已存在', true);
+  DB.players.push({ id: Date.now().toString(), name, gender });
+  saveDB();
+  document.getElementById('new-player-name').value = '';
+  renderPlayerList(); updatePlayerDropdowns();
+  notify('選手已新增：' + name);
+}
+function removePlayer(id) {
+  if (!confirm('確定刪除此選手？')) return;
+  DB.players = DB.players.filter(p => p.id !== id);
+  saveDB(); renderPlayerList(); updatePlayerDropdowns();
+}
+function renderPlayerList() {
+  const cont = document.getElementById('player-list-table');
+  if (!DB.players.length) { cont.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:13px">尚無選手</div>'; return; }
+  cont.innerHTML = '<table><thead><tr><th>名字</th><th>性別</th><th>操作</th></tr></thead><tbody>' +
+    DB.players.map(p => `<tr id="plist-${p.id}">
+      <td id="pname-${p.id}" class="player-name">${p.name}</td>
+      <td id="pgender-${p.id}"><span class="badge ${p.gender==='F'?'female':'male'}">${p.gender==='F'?'♀ 女':'♂ 男'}</span></td>
+      <td style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn secondary" onclick="editPlayer('${p.id}')" style="padding:4px 10px;font-size:12px">✏️ 編輯</button>
+        <button class="btn danger" onclick="removePlayer('${p.id}')" style="padding:4px 10px;font-size:12px">刪除</button>
+      </td>
+    </tr>`).join('') + '</tbody></table>';
+}
+
+function editPlayer(id) {
+  const p = DB.players.find(x => x.id === id);
+  if (!p) return;
+  const nameCell = document.getElementById('pname-' + id);
+  const genderCell = document.getElementById('pgender-' + id);
+  const row = document.getElementById('plist-' + id);
+  // Replace cells with inputs
+  nameCell.innerHTML = `<input type="text" id="edit-name-${id}" value="${p.name}" style="width:120px;padding:5px 8px;font-size:13px;">`;
+  genderCell.innerHTML = `<select id="edit-gender-${id}" style="padding:5px 8px;font-size:13px;">
+    <option value="M" ${p.gender==='M'?'selected':''}>♂ 男</option>
+    <option value="F" ${p.gender==='F'?'selected':''}>♀ 女</option>
+  </select>`;
+  // Replace buttons
+  row.querySelector('td:last-child').innerHTML = `
+    <button class="btn" onclick="savePlayerEdit('${id}')" style="padding:4px 10px;font-size:12px">✅ 儲存</button>
+    <button class="btn outline" onclick="renderPlayerList()" style="padding:4px 10px;font-size:12px">取消</button>
+  `;
+  document.getElementById('edit-name-' + id).focus();
+}
+
+function savePlayerEdit(id) {
+  const newName = document.getElementById('edit-name-' + id).value.trim();
+  const newGender = document.getElementById('edit-gender-' + id).value;
+  if (!newName) return notify('名字不能為空', true);
+  const dup = DB.players.find(p => p.name === newName && p.id !== id);
+  if (dup) return notify('選手名字已存在', true);
+  const p = DB.players.find(x => x.id === id);
+  p.name = newName;
+  p.gender = newGender;
+  saveDB(); renderPlayerList(); updatePlayerDropdowns();
+  notify('✅ 選手資料已更新：' + newName);
+}
+
+let playerRows = [];
+function addPlayerRow() {
+  const id = Date.now().toString();
+  playerRows.push(id);
+  const cont = document.getElementById('player-entries');
+  const div = document.createElement('div');
+  div.className = 'player-row';
+  div.id = 'prow-' + id;
+  div.innerHTML = `
+    <select class="player-sel" data-row="${id}">
+      <option value="">— 選擇選手 —</option>
+      ${DB.players.map(p=>`<option value="${p.id}">${p.name}</option>`).join('')}
+    </select>
+    <select data-field="rank" data-row="${id}">
+      <option value="">名次</option>
+      ${Array.from({length:20},(_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}
+    </select>
+    <select data-field="buyIn" data-row="${id}">
+      ${Array.from({length:20},(_,i)=>`<option value="${(i+1)*100}" ${(i+1)*100===500?'selected':''}>${(i+1)*100}</option>`).join('')}
+    </select>
+    <select data-field="rebuys" data-row="${id}">
+      ${Array.from({length:21},(_,i)=>`<option value="${i}" ${i===0?'selected':''}>${i}</option>`).join('')}
+    </select>
+    <input type="number" placeholder="0" data-field="prize" data-row="${id}" value="0">
+    <select data-field="dealt" data-row="${id}">
+      <option value="0" selected>✗</option>
+      <option value="1">✓</option>
+    </select>
+    <button class="remove-btn" onclick="removeRow('${id}')">×</button>
+  `;
+  cont.appendChild(div);
+}
+function removeRow(id) {
+  playerRows = playerRows.filter(r => r !== id);
+  const el = document.getElementById('prow-' + id);
+  if (el) el.remove();
+}
+function updatePlayerDropdowns() {
+  document.querySelectorAll('.player-sel').forEach(sel => {
+    const cur = sel.value;
+    sel.innerHTML = `<option value="">— 選擇選手 —</option>` +
+      DB.players.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${p.name}</option>`).join('');
+  });
+}
+function clearEntry() {
+  playerRows = [];
+  document.getElementById('player-entries').innerHTML = '';
+  document.getElementById('game-date').value = '';
+}
+function saveGame() {
+  const date = document.getElementById('game-date').value;
+  if (!date) return notify('請選擇比賽日期', true);
+  const season = document.getElementById('game-season').value;
+  const session = document.getElementById('game-session').value;
+  const entryFee = parseFloat(document.getElementById('game-entry-fee').value) || 0;
+  const pool = parseFloat(document.getElementById('game-pool').value) || 0;
+  const results = [];
+  let ok = true;
+  playerRows.forEach(id => {
+    const row = document.getElementById('prow-' + id);
+    if (!row) return;
+    const playerId = row.querySelector('.player-sel').value;
+    const rank = parseInt(row.querySelector('[data-field="rank"]').value) || 0;
+    if (!playerId || !rank) { ok = false; return; }
+    const p = DB.players.find(x => x.id === playerId);
+    results.push({
+      playerId, gender: p ? p.gender : 'M', rank,
+      buyIn: parseFloat(row.querySelector('[data-field="buyIn"]').value) || 0,
+      rebuys: parseInt(row.querySelector('[data-field="rebuys"]').value) || 0,
+      prize: parseFloat(row.querySelector('[data-field="prize"]').value) || 0,
+      dealt: parseInt(row.querySelector('[data-field="dealt"]').value) || 0,
+      huWins: rank === 1 ? 1 : 0,
+      huLosses: rank === 2 ? 1 : 0,
+    });
+  });
+  if (!ok || !results.length) return notify('請填寫所有選手的名次', true);
+  DB.games.push({ id: Date.now().toString(), date, session, season, entryFee, pool, results });
+  saveDB(); clearEntry(); notify('✅ 比賽已儲存！'); renderHistory();
+}
+
+function rankScore(rank) { return rank===1?6:rank===2?3:rank===3?1:0; }
+
+function computeStats(season) {
+  const games = season === 'all' ? DB.games : DB.games.filter(g => g.season === season);
+  const stats = {};
+  DB.players.forEach(p => {
+    stats[p.id] = { id:p.id, name:p.name, gender:p.gender, games:0, rankPts:0, totalBuyIn:0, totalRebuys:0, totalPrize:0, first:0, second:0, third:0, dealt:0, huWins:0, huLosses:0, allGames:[] };
+  });
+  const allDates = games.map(g => g.date).sort();
+  games.forEach(g => {
+    g.results.forEach(r => {
+      if (!stats[r.playerId]) return;
+      const s = stats[r.playerId];
+      s.games++; s.rankPts += rankScore(r.rank);
+      s.totalBuyIn += r.buyIn + (r.rebuys * r.buyIn);
+      s.totalRebuys += r.rebuys; s.totalPrize += r.prize; s.dealt += r.dealt;
+      s.huWins += r.huWins||0; s.huLosses += r.huLosses||0;
+      if (r.rank===1) s.first++; if (r.rank===2) s.second++; if (r.rank===3) s.third++;
+      s.allGames.push(g.date);
+    });
+  });
+  const last6 = allDates.slice(-6);
+  Object.values(stats).forEach(s => {
+    const participated = last6.filter(d => s.allGames.includes(d)).length;
+    s.recentRate = last6.length ? participated / last6.length : 0;
+  });
+  const qualified = Object.values(stats).filter(s => s.games >= 1);
+  const maxRankPts = Math.max(...qualified.map(s => s.rankPts), 1);
+  qualified.forEach(s => {
+    const A = s.rankPts / maxRankPts, C = s.recentRate;
+    s.mvpScore = (A * 0.33 + A * 0.33 + C * 0.34) * 100;
+    s.net = s.totalPrize - s.totalBuyIn;
+    s.roi = s.totalBuyIn > 0 ? ((s.totalPrize - s.totalBuyIn) / s.totalBuyIn * 100) : 0;
+    s.rebuyRate = s.games > 0 ? s.totalRebuys / s.games : 0;
+    s.huRate = (s.huWins + s.huLosses) > 0 ? s.huWins / (s.huWins + s.huLosses) : 0;
+    s.huTotal = s.huWins + s.huLosses;
+    s.photoCount = s.first + s.second + s.third;
+  });
+  return stats;
+}
+
+function renderDashboard() {
+  const season = document.getElementById('dash-season').value;
+  const stats = computeStats(season);
+  const arr = Object.values(stats).filter(s => s.games > 0);
+  const all = [...arr].sort((a,b) => b.mvpScore - a.mvpScore);
+  const males = all.filter(s => s.gender === 'M');
+  const females = all.filter(s => s.gender === 'F');
+  document.getElementById('mvp-overall').textContent = all[0]?.name || '—';
+  document.getElementById('mvp-overall-pts').textContent = all[0] ? `MVP ${all[0].mvpScore.toFixed(1)} | 積分 ${all[0].rankPts} | 參賽率 ${(all[0].recentRate*100).toFixed(0)}%` : '';
+  document.getElementById('mvp-female').textContent = females[0]?.name || '—';
+  document.getElementById('mvp-female-pts').textContent = females[0] ? `MVP ${females[0].mvpScore.toFixed(1)} | 積分 ${females[0].rankPts} | 參賽率 ${(females[0].recentRate*100).toFixed(0)}%` : '';
+  document.getElementById('mvp-male').textContent = males[0]?.name || '—';
+  document.getElementById('mvp-male-pts').textContent = males[0] ? `MVP ${males[0].mvpScore.toFixed(1)} | 積分 ${males[0].rankPts} | 參賽率 ${(males[0].recentRate*100).toFixed(0)}%` : '';
+  const games = DB.games.filter(g => g.season === season);
+  const totalPrize = games.reduce((s,g) => s + g.results.reduce((a,r)=>a+r.prize,0),0);
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat-card"><div class="num">${games.length}</div><div class="lbl">場比賽 Games</div></div>
+    <div class="stat-card"><div class="num">${DB.players.length}</div><div class="lbl">選手 Players</div></div>
+    <div class="stat-card"><div class="num">${arr.length}</div><div class="lbl">出賽人次</div></div>
+    <div class="stat-card"><div class="num">$${totalPrize.toLocaleString()}</div><div class="lbl">總獎金 Prize</div></div>
+  `;
+  document.getElementById('dash-top5').innerHTML = mkTable(['#','名字','積分','場次'], all.slice(0,5).map((s,i)=>[i+1,s.name,s.rankPts,s.games]));
+  const prz5 = [...arr].sort((a,b)=>b.totalPrize-a.totalPrize).slice(0,5);
+  document.getElementById('dash-prize5').innerHTML = mkTable(['#','名字','獎金','淨利'], prz5.map((s,i)=>[i+1,s.name,'$'+s.totalPrize.toLocaleString(),colorNum(s.net)]));
+  renderMvpChart(season);
+}
+
+let mvpChartInstance = null;
+
+function renderMvpChart(season) {
+  const games = (season === 'all' ? DB.games : DB.games.filter(g => g.season === season))
+    .slice().sort((a,b) => a.date.localeCompare(b.date));
+  if (!games.length) return;
+
+  // Build per-player cumulative mvpScore across games
+  const playerMap = {};
+  DB.players.forEach(p => { playerMap[p.id] = { name: p.name, scores: [] }; });
+
+  // running rankPts per player
+  const runPts = {}, runGames = {}, runRecent = {};
+  DB.players.forEach(p => { runPts[p.id] = 0; runGames[p.id] = 0; });
+
+  const labels = games.map((g,i) => {
+    const d = g.date.slice(5); // MM-DD
+    return `G${i+1} ${d}`;
+  });
+
+  // After each game compute cumulative MVP score for all players who played >= 1 game
+  const playerScoreHistory = {}; // id -> [score after game0, game1, ...]
+  DB.players.forEach(p => { playerScoreHistory[p.id] = []; });
+
+  games.forEach((g, gi) => {
+    // update running stats
+    g.results.forEach(r => {
+      if (!runPts[r.playerId] && runPts[r.playerId] !== 0) return;
+      runPts[r.playerId] = (runPts[r.playerId] || 0) + (r.rank===1?6:r.rank===2?3:r.rank===3?1:0);
+      runGames[r.playerId] = (runGames[r.playerId] || 0) + 1;
+    });
+
+    // compute recent rate (last 6 games up to this game)
+    const recentGames = games.slice(Math.max(0, gi-5), gi+1);
+    const allMaxPts = Math.max(...DB.players.map(p => runPts[p.id] || 0), 1);
+
+    DB.players.forEach(p => {
+      const participated = recentGames.filter(rg => rg.results.some(r => r.playerId === p.id)).length;
+      const recentRate = recentGames.length ? participated / recentGames.length : 0;
+      const A = (runPts[p.id] || 0) / allMaxPts;
+      const score = runGames[p.id] > 0 ? (A * 0.66 + recentRate * 0.34) * 100 : null;
+      playerScoreHistory[p.id].push(score);
+    });
+  });
+
+  // Only show players who participated in at least 1 game
+  const activePlayers = DB.players.filter(p => runGames[p.id] > 0);
+
+  const COLORS = [
+    '#C8102E','#4FC3F7','#81C784','#FFD54F','#BA68C8',
+    '#FF8A65','#4DB6AC','#F06292','#AED581','#FFB74D'
+  ];
+
+  const datasets = activePlayers.map((p, i) => ({
+    label: p.name,
+    data: playerScoreHistory[p.id],
+    borderColor: COLORS[i % COLORS.length],
+    backgroundColor: COLORS[i % COLORS.length] + '22',
+    borderWidth: 2,
+    pointRadius: 4,
+    pointHoverRadius: 6,
+    tension: 0.3,
+    spanGaps: true,
+  }));
+
+  const canvas = document.getElementById('mvp-trend-chart');
+  if (!canvas) return;
+
+  if (mvpChartInstance) { mvpChartInstance.destroy(); mvpChartInstance = null; }
+
+  mvpChartInstance = new Chart(canvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            color: '#9A9A9A',
+            font: { family: "'Barlow Condensed', sans-serif", size: 13 },
+            boxWidth: 12, padding: 16,
+          }
+        },
+        tooltip: {
+          backgroundColor: '#141414',
+          borderColor: '#333',
+          borderWidth: 1,
+          titleColor: '#E8E8E8',
+          bodyColor: '#9A9A9A',
+          titleFont: { family: "'Barlow Condensed', sans-serif", size: 13 },
+          bodyFont: { family: "'Noto Sans TC', sans-serif", size: 12 },
+          callbacks: {
+            label: ctx => {
+              const v = ctx.raw;
+              return ` ${ctx.dataset.label}: ${v !== null ? v.toFixed(1) + ' pts' : '—'}`;
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          ticks: { color: '#666', font: { family: "'Barlow Condensed', sans-serif", size: 12 } },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          border: { color: 'rgba(255,255,255,0.1)' }
+        },
+        y: {
+          ticks: { color: '#666', font: { family: "'Barlow Condensed', sans-serif", size: 12 }, callback: v => v.toFixed(0) + ' pts' },
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          border: { color: 'rgba(255,255,255,0.1)' },
+          beginAtZero: true,
+        }
+      }
+    }
+  });
+}
+
+function renderLeaderboard() {
+  const season = document.getElementById('lb-season').value;
+  const stats = computeStats(season);
+  let arr = Object.values(stats).filter(s => s.games > 0);
+  if (lbView === 'male') arr = arr.filter(s => s.gender === 'M');
+  if (lbView === 'female') arr = arr.filter(s => s.gender === 'F');
+  arr.sort((a,b) => b.mvpScore - a.mvpScore);
+  const cont = document.getElementById('lb-table');
+  if (!arr.length) { cont.innerHTML = '<div style="padding:20px;color:var(--text3)">尚無資料</div>'; return; }
+  cont.innerHTML = `<table><thead><tr><th>排名</th><th>選手</th><th>性別</th><th>MVP積分</th><th>名次積分(A)</th><th>近期參賽率(C)</th><th>場次</th><th>1st</th><th>2nd</th><th>3rd</th><th>總買入</th><th>總獎金</th><th>淨利</th><th>ROI%</th></tr></thead><tbody>` +
+    arr.map((s,i) => {
+      const rk=i+1; const rkClass=rk===1?'rank gold':rk===2?'rank silver':rk===3?'rank bronze':'rank';
+      return `<tr><td><span class="${rkClass}">${rk}</span></td><td class="player-name">${s.name}</td><td><span class="badge ${s.gender==='F'?'female':'male'}">${s.gender==='F'?'♀':'♂'}</span></td><td class="score">${s.mvpScore.toFixed(1)}</td><td>${s.rankPts}</td><td>${(s.recentRate*100).toFixed(0)}%</td><td>${s.games}</td><td>${s.first}</td><td>${s.second}</td><td>${s.third}</td><td>$${s.totalBuyIn.toLocaleString()}</td><td>$${s.totalPrize.toLocaleString()}</td><td>${colorNum(s.net)}</td><td>${colorNum(s.roi.toFixed(1),'%')}</td></tr>`;
+    }).join('') + '</tbody></table>';
+}
+
+const AWARD_DEFS = [
+  { key:'mvp',     icon:'🏆', zh:'MVP', en:'MVP',                    desc:'綜合積分第一名', fn:s=>s.sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
+  { key:'mvpF',    icon:'👸', zh:'女子MVP', en:'Female MVP',         desc:'女子綜合積分第一', fn:s=>s.filter(x=>x.gender==='F').sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
+  { key:'mvpM',    icon:'👑', zh:'男子MVP', en:'Male MVP',           desc:'男子綜合積分第一', fn:s=>s.filter(x=>x.gender==='M').sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
+  { key:'bestF',   icon:'👸', zh:'最佳女牌手', en:'Best Female',     desc:'女玩家第一名最多次', fn:s=>s.filter(x=>x.gender==='F').sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次冠軍` },
+  { key:'bestM',   icon:'👑', zh:'最佳男牌手', en:'Best Male',       desc:'男玩家第一名最多次', fn:s=>s.filter(x=>x.gender==='M').sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次冠軍` },
+  { key:'prize',   icon:'💰', zh:'獎金王', en:'Prize King',          desc:'累計獎金最多', fn:s=>s.sort((a,b)=>b.totalPrize-a.totalPrize), fmt:s=>`$${s.totalPrize.toLocaleString()}` },
+  { key:'netwin',  icon:'💵', zh:'尻王', en:'Net Win King',          desc:'累計獎金 - 總投入最多', fn:s=>s.sort((a,b)=>b.net-a.net), fmt:s=>`$${s.net.toLocaleString()}` },
+  { key:'roi',     icon:'📈', zh:'投資王', en:'ROI King',            desc:'ROI 投入最少賺最多%', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>b.roi-a.roi), fmt:s=>`${s.roi.toFixed(1)}%` },
+  { key:'atm',     icon:'🏧', zh:'ATM贊助王', en:'ATM King',         desc:'總損失最多', fn:s=>s.sort((a,b)=>a.net-b.net), fmt:s=>`$${Math.abs(s.net).toLocaleString()} 損失` },
+  { key:'attend',  icon:'🎓', zh:'有你有我獎', en:'Full Attendance', desc:'出席率最高', req:true, fn:s=>s.sort((a,b)=>b.recentRate-a.recentRate), fmt:s=>`${(s.recentRate*100).toFixed(0)}%` },
+  { key:'photo',   icon:'📸', zh:'拍照王', en:'Photo King',          desc:'前三名拍照總次數最多', fn:s=>s.sort((a,b)=>b.photoCount-a.photoCount), fmt:s=>`${s.photoCount} 次` },
+  { key:'nophoto', icon:'🪞', zh:'藏鏡人', en:'Shadow Man',          desc:'一定場次以上拍照最少', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>a.photoCount-b.photoCount), fmt:s=>`${s.photoCount} 次` },
+  { key:'peace',   icon:'🕊️', zh:'和平大使', en:'Peacemaker',        desc:'正負獎項最少（一定出席率）', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>a.first-b.first), fmt:s=>`低調型選手` },
+  { key:'tight',   icon:'🦪', zh:'臭緊B', en:'Tight King',           desc:'一定場次以上重買率最低', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>a.rebuyRate-b.rebuyRate), fmt:s=>`${(s.rebuyRate*100).toFixed(1)}% 重買率` },
+  { key:'fish',    icon:'🐟', zh:'魚王', en:'Fish King',             desc:'每場平均重買率最高', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>b.rebuyRate-a.rebuyRate), fmt:s=>`${(s.rebuyRate*100).toFixed(1)}% 重買率` },
+  { key:'pkking',  icon:'🦍', zh:'PK King', en:'PK King',            desc:'Head-up 勝率最高', req:true, fn:s=>s.filter(x=>x.huTotal>=3).sort((a,b)=>b.huRate-a.huRate), fmt:s=>`${(s.huRate*100).toFixed(0)}% 勝率 (${s.huTotal}場)` },
+  { key:'lemon',   icon:'🍐', zh:'孔融讓梨', en:'Humble One',        desc:'Head-up 輸率最高', req:true, fn:s=>s.filter(x=>x.huTotal>=3).sort((a,b)=>a.huRate-b.huRate), fmt:s=>`${((1-s.huRate)*100).toFixed(0)}% 輸率` },
+  { key:'oneshot', icon:'🔫', zh:'一發入魂', en:'One Shot',          desc:'一次買入就獲得冠軍', fn:s=>s.filter(x=>x.first>0&&x.totalRebuys===0).sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次` },
+  { key:'topdog2', icon:'✌️', zh:'最強老二', en:'Best 2nd',          desc:'第二名最多次', fn:s=>s.sort((a,b)=>b.second-a.second), fmt:s=>`${s.second} 次` },
+  { key:'mama',    icon:'👩‍🦰', zh:'愛心媽媽', en:'Mama Love',        desc:'發牌次數最多（手動記錄）', fn:s=>s.sort((a,b)=>b.dealt-a.dealt), fmt:s=>`${s.dealt} 次發牌` },
+  { key:'bubble',  icon:'🦖', zh:'泡泡龍', en:'Bubble',              desc:'吃正泡最多 (手動統計)', fn:s=>s.sort((a,b)=>a.games-b.games), fmt:s=>`手動統計` },
+  { key:'uphead',  icon:'🤯', zh:'上頭王', en:'Tilt King',           desc:'單場重買最多', fn:s=>s.sort((a,b)=>b.totalRebuys-a.totalRebuys), fmt:s=>`${s.totalRebuys} 次重買(累計)` },
+];
+
+function renderAwards() {
+  const season = document.getElementById('aw-season').value;
+  const stats = computeStats(season);
+  const arr = Object.values(stats).filter(s => s.games > 0);
+  const minGames = DB.config?.minGames || 3;
+  document.getElementById('awards-grid').innerHTML = AWARD_DEFS.map(def => {
+    const sorted = def.fn([...arr]);
+    const winner = sorted[0];
+    const qualified = !def.req || (winner && winner.games >= minGames);
+    const name = winner && qualified ? winner.name : null;
+    const detail = winner && qualified ? def.fmt(winner) : null;
+    return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3>${name?`<div class="holder">${name}</div><div class="detail">${detail}</div>`:`<div class="tbd">—</div>`}<div class="desc">${def.desc}</div></div></div>`;
+  }).join('');
+}
+
+function renderHistory() {
+  const season = document.getElementById('hist-season').value;
+  const player = document.getElementById('hist-player').value;
+  const sel = document.getElementById('hist-player');
+  const cur = sel.value;
+  sel.innerHTML = `<option value="all">全部選手</option>` + DB.players.map(p=>`<option value="${p.id}" ${p.id===cur?'selected':''}>${p.name}</option>`).join('');
+  let games = [...DB.games].sort((a,b) => b.date.localeCompare(a.date));
+  if (season !== 'all') games = games.filter(g => g.season === season);
+  if (player !== 'all') games = games.filter(g => g.results.some(r => r.playerId === player));
+  const cont = document.getElementById('history-table');
+  if (!games.length) { cont.innerHTML = '<div style="padding:20px;color:var(--text3)">尚無比賽紀錄</div>'; return; }
+  cont.innerHTML = `<table><thead><tr><th>日期</th><th>賽季</th><th>場次</th><th>選手數</th><th>獎金池</th><th>冠軍</th><th>亞軍</th><th>季軍</th><th>操作</th></tr></thead><tbody>` +
+    games.map(g => {
+      const res = [...g.results].sort((a,b)=>a.rank-b.rank);
+      const get = (rank) => { const r = res.find(x=>x.rank===rank); return r ? (DB.players.find(p=>p.id===r.playerId)?.name||'?') : '—'; };
+      const totalPrize = res.reduce((s,r)=>s+r.prize,0);
+      return `<tr><td>${g.date} <span class="session-badge">S${g.session||1}</span></td><td>${g.season}</td><td>S${g.session||1}</td><td>${res.length}</td><td>$${totalPrize.toLocaleString()}</td><td>🥇 ${get(1)}</td><td>🥈 ${get(2)}</td><td>🥉 ${get(3)}</td><td><button class="btn danger" onclick="deleteGame('${g.id}')" style="padding:4px 10px;font-size:11px">刪除</button></td></tr>`;
+    }).join('') + '</tbody></table>';
+}
+function deleteGame(id) {
+  if (!confirm('確定刪除此比賽紀錄？')) return;
+  DB.games = DB.games.filter(g => g.id !== id);
+  saveDB(); renderHistory(); renderDashboard(); notify('比賽已刪除');
+}
+function clearHistory() {
+  if (!confirm('確定清除所有比賽資料？此操作無法復原！')) return;
+  DB.games = [];
+  saveDB(); renderHistory(); renderDashboard(); notify('所有資料已清除');
+}
+
+function loadConfig() {
+  document.getElementById('cfg-min-games').value = DB.config?.minGames || 3;
+  document.getElementById('cfg-photo-rank').value = DB.config?.photoRank || 3;
+  document.getElementById('sheet-url').value = DB.sheetUrl || '';
+}
+function saveConfig() {
+  DB.config = { minGames: parseInt(document.getElementById('cfg-min-games').value)||3, photoRank: parseInt(document.getElementById('cfg-photo-rank').value)||3 };
+  saveDB(); notify('設定已儲存');
+}
+function saveSheetUrl() { DB.sheetUrl = document.getElementById('sheet-url').value.trim(); saveDB(); notify('URL 已儲存'); }
+function manualSync() {
+  DB.sheetUrl = document.getElementById('sheet-url').value.trim() || DB.sheetUrl;
+  if (!DB.sheetUrl) return notify('請先填入並連結 Google Sheets URL', true);
+  notify('🔄 同步中...');
+  syncFromSheet((ok, msg) => {
+    if (ok) { notify('✅ 同步成功！資料已更新'); loadConfig(); }
+    else notify('❌ 同步失敗：' + (msg||'請確認 URL 正確'), true);
+  });
+}
+function testSheet() {
+  const url = document.getElementById('sheet-url').value.trim();
+  if (!url) return notify('請先填入 URL', true);
+  notify('測試連線中...');
+  fetch(url + '?sheet=test').then(r=>r.json()).then(d=>{ notify('✅ 連線成功！'); }).catch(()=>notify('❌ 連線失敗，請確認 URL 正確', true));
+}
+function copyCode() { navigator.clipboard.writeText(document.getElementById('gas-code').textContent).then(() => notify('程式碼已複製！')); }
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(DB, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'poker-data-' + new Date().toISOString().slice(0,10) + '.json'; a.click();
+}
+function exportCSV() {
+  let csv = '日期,場次,賽季,選手,性別,名次,買入,重買,獎金\n';
+  DB.games.forEach(g => { g.results.forEach(r => { const p = DB.players.find(x=>x.id===r.playerId); csv += `${g.date},${g.session||1},${g.season},${p?.name||r.playerId},${r.gender},${r.rank},${r.buyIn},${r.rebuys},${r.prize}\n`; }); });
+  const blob = new Blob(['\uFEFF'+csv], {type:'text/csv;charset=utf-8'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'poker-' + new Date().toISOString().slice(0,10) + '.csv'; a.click();
+}
+function importData() { document.getElementById('import-file').click(); }
+function doImport(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => { try { const data = JSON.parse(ev.target.result); if (!confirm('確定要匯入？現有資料將被覆蓋！')) return; DB = data; saveDB(); renderAll(); notify('資料匯入成功！'); } catch(err) { notify('匯入失敗：格式錯誤', true); } };
+  reader.readAsText(file);
+}
+
+function mkTable(headers, rows) {
+  return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>` + rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
+}
+function colorNum(n, suffix='') {
+  const v = typeof n === 'string' ? parseFloat(n) : n;
+  const cls = v > 0 ? 'positive' : v < 0 ? 'negative' : '';
+  const sign = v > 0 ? '+' : '';
+  const display = typeof n === 'string' ? n : n.toLocaleString();
+  return `<span class="${cls}">${sign}${display}${suffix}</span>`;
+}
+function notify(msg, err=false) {
+  const el = document.getElementById('notif');
+  el.textContent = msg; el.className = 'notif show' + (err ? ' error' : '');
+  clearTimeout(window._nt); window._nt = setTimeout(() => el.className = 'notif', 3000);
+}
+
+function loadSampleData() {
+  if (!confirm('確定載入測試資料？現有所有資料將被覆蓋！')) return;
+  DB.players = [
+    { id:'p1', name:'阿志', gender:'M' },
+    { id:'p2', name:'小美', gender:'F' },
+    { id:'p3', name:'大偉', gender:'M' },
+    { id:'p4', name:'曉琳', gender:'F' },
+    { id:'p5', name:'阿凱', gender:'M' },
+    { id:'p6', name:'雅婷', gender:'F' },
+    { id:'p7', name:'建宏', gender:'M' },
+    { id:'p8', name:'芸芸', gender:'F' },
+    { id:'p9', name:'志明', gender:'M' },
+    { id:'p10', name:'淑芬', gender:'F' },
+  ];
+  DB.games = [
+    { id:'g1', date:'2025-01-11', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p1',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2200,dealt:1,huWins:1,huLosses:0},
+      {playerId:'p2',gender:'F',rank:2,buyIn:500,rebuys:1,prize:1200,dealt:0,huWins:0,huLosses:1},
+      {playerId:'p3',gender:'M',rank:3,buyIn:500,rebuys:0,prize:600,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p4',gender:'F',rank:4,buyIn:500,rebuys:1,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p5',gender:'M',rank:5,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p6',gender:'F',rank:6,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p7',gender:'M',rank:7,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:8,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p9',gender:'M',rank:9,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:10,buyIn:500,rebuys:3,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g2', date:'2025-01-18', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p3',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2400,dealt:1,huWins:1,huLosses:0},
+      {playerId:'p5',gender:'M',rank:2,buyIn:500,rebuys:0,prize:1300,dealt:0,huWins:0,huLosses:1},
+      {playerId:'p2',gender:'F',rank:3,buyIn:500,rebuys:1,prize:700,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p1',gender:'M',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p9',gender:'M',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p6',gender:'F',rank:7,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p4',gender:'F',rank:8,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:9,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p7',gender:'M',rank:10,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g3', date:'2025-01-25', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p7',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2600,dealt:0,huWins:1,huLosses:0},
+      {playerId:'p4',gender:'F',rank:2,buyIn:500,rebuys:0,prize:1400,dealt:1,huWins:0,huLosses:1},
+      {playerId:'p9',gender:'M',rank:3,buyIn:500,rebuys:1,prize:700,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p1',gender:'M',rank:4,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p2',gender:'F',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p5',gender:'M',rank:7,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p3',gender:'M',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p6',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g4', date:'2025-02-01', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p2',gender:'F',rank:1,buyIn:500,rebuys:1,prize:2500,dealt:1,huWins:1,huLosses:0},
+      {playerId:'p6',gender:'F',rank:2,buyIn:500,rebuys:0,prize:1300,dealt:0,huWins:0,huLosses:1},
+      {playerId:'p1',gender:'M',rank:3,buyIn:500,rebuys:0,prize:650,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p7',gender:'M',rank:4,buyIn:500,rebuys:1,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p3',gender:'M',rank:5,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:6,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:7,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p5',gender:'M',rank:8,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p4',gender:'F',rank:9,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p9',gender:'M',rank:10,buyIn:500,rebuys:3,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g5', date:'2025-02-08', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p5',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2300,dealt:0,huWins:1,huLosses:0},
+      {playerId:'p9',gender:'M',rank:2,buyIn:500,rebuys:1,prize:1200,dealt:1,huWins:0,huLosses:1},
+      {playerId:'p4',gender:'F',rank:3,buyIn:500,rebuys:0,prize:600,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p2',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p1',gender:'M',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:7,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p6',gender:'F',rank:8,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p7',gender:'M',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p3',gender:'M',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g6', date:'2025-02-15', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p1',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2700,dealt:1,huWins:1,huLosses:0},
+      {playerId:'p3',gender:'M',rank:2,buyIn:500,rebuys:0,prize:1400,dealt:0,huWins:0,huLosses:1},
+      {playerId:'p8',gender:'F',rank:3,buyIn:500,rebuys:1,prize:700,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p5',gender:'M',rank:4,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p6',gender:'F',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p4',gender:'F',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p2',gender:'F',rank:7,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p9',gender:'M',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p7',gender:'M',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g7', date:'2025-02-22', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p4',gender:'F',rank:1,buyIn:500,rebuys:0,prize:2500,dealt:0,huWins:1,huLosses:0},
+      {playerId:'p7',gender:'M',rank:2,buyIn:500,rebuys:1,prize:1300,dealt:1,huWins:0,huLosses:1},
+      {playerId:'p6',gender:'F',rank:3,buyIn:500,rebuys:0,prize:650,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p9',gender:'M',rank:5,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p3',gender:'M',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p1',gender:'M',rank:7,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p2',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p5',gender:'M',rank:10,buyIn:500,rebuys:3,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g8', date:'2025-03-01', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p9',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2600,dealt:1,huWins:1,huLosses:0},
+      {playerId:'p2',gender:'F',rank:2,buyIn:500,rebuys:0,prize:1400,dealt:0,huWins:0,huLosses:1},
+      {playerId:'p5',gender:'M',rank:3,buyIn:500,rebuys:1,prize:700,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p1',gender:'M',rank:4,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p7',gender:'M',rank:5,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p3',gender:'M',rank:6,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p4',gender:'F',rank:7,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p6',gender:'F',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g9', date:'2025-03-08', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p6',gender:'F',rank:1,buyIn:500,rebuys:0,prize:2400,dealt:1,huWins:1,huLosses:0},
+      {playerId:'p1',gender:'M',rank:2,buyIn:500,rebuys:1,prize:1200,dealt:0,huWins:0,huLosses:1},
+      {playerId:'p3',gender:'M',rank:3,buyIn:500,rebuys:0,prize:600,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p2',gender:'F',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p5',gender:'M',rank:7,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p7',gender:'M',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p4',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p9',gender:'M',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+    { id:'g10', date:'2025-03-15', session:'1', season:'2025', entryFee:500, pool:0, results:[
+      {playerId:'p2',gender:'F',rank:1,buyIn:500,rebuys:0,prize:2800,dealt:0,huWins:1,huLosses:0},
+      {playerId:'p4',gender:'F',rank:2,buyIn:500,rebuys:0,prize:1500,dealt:1,huWins:0,huLosses:1},
+      {playerId:'p7',gender:'M',rank:3,buyIn:500,rebuys:1,prize:750,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p6',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p3',gender:'M',rank:5,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+      {playerId:'p1',gender:'M',rank:6,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p9',gender:'M',rank:7,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p5',gender:'M',rank:8,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p8',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      {playerId:'p10',gender:'F',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+    ]},
+  ];
+  saveDB(); renderAll();
+  notify('✅ 測試資料已載入！10 位選手 × 10 場比賽');
+  showTab_direct('dashboard');
+}
+
+function showTab_direct(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-' + name).classList.add('active');
+  document.querySelector(`.tab[onclick*="${name}"]`).classList.add('active');
+  if (name === 'dashboard') renderDashboard();
+}
+
+function renderAll() { renderDashboard(); renderLeaderboard(); renderAwards(); renderHistory(); renderPlayerList(); updatePlayerDropdowns(); }
+
+window.onload = () => {
+  loadDB();
+  document.getElementById('game-date').value = new Date().toISOString().slice(0,10);
+  loadConfig(); renderAll();
+  // 若有設定 Sheet URL，自動從雲端拉最新資料
+  if (DB.sheetUrl) {
+    notify('🔄 正在從 Google Sheets 同步資料...');
+    syncFromSheet((ok, msg) => {
+      if (ok) notify('✅ 已從 Google Sheets 載入最新資料！');
+      else notify('⚠️ 無法同步：' + (msg||''), true);
+    });
+  }
+  if (DB.players.length === 0) {
+    // 10 sample players
+    DB.players = [
+      { id:'p1', name:'阿志', gender:'M' },
+      { id:'p2', name:'小美', gender:'F' },
+      { id:'p3', name:'大偉', gender:'M' },
+      { id:'p4', name:'曉琳', gender:'F' },
+      { id:'p5', name:'阿凱', gender:'M' },
+      { id:'p6', name:'雅婷', gender:'F' },
+      { id:'p7', name:'建宏', gender:'M' },
+      { id:'p8', name:'芸芸', gender:'F' },
+      { id:'p9', name:'志明', gender:'M' },
+      { id:'p10', name:'淑芬', gender:'F' },
+    ];
+    // 10 sample games — each game all 10 players, varied ranks & prizes
+    DB.games = [
+      { id:'g1', date:'2025-01-11', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p1',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2200,dealt:1,huWins:1,huLosses:0},
+        {playerId:'p2',gender:'F',rank:2,buyIn:500,rebuys:1,prize:1200,dealt:0,huWins:0,huLosses:1},
+        {playerId:'p3',gender:'M',rank:3,buyIn:500,rebuys:0,prize:600,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p4',gender:'F',rank:4,buyIn:500,rebuys:1,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p5',gender:'M',rank:5,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p6',gender:'F',rank:6,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p7',gender:'M',rank:7,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:8,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p9',gender:'M',rank:9,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:10,buyIn:500,rebuys:3,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g2', date:'2025-01-18', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p3',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2400,dealt:1,huWins:1,huLosses:0},
+        {playerId:'p5',gender:'M',rank:2,buyIn:500,rebuys:0,prize:1300,dealt:0,huWins:0,huLosses:1},
+        {playerId:'p2',gender:'F',rank:3,buyIn:500,rebuys:1,prize:700,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p1',gender:'M',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p9',gender:'M',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p6',gender:'F',rank:7,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p4',gender:'F',rank:8,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:9,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p7',gender:'M',rank:10,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g3', date:'2025-01-25', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p7',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2600,dealt:0,huWins:1,huLosses:0},
+        {playerId:'p4',gender:'F',rank:2,buyIn:500,rebuys:0,prize:1400,dealt:1,huWins:0,huLosses:1},
+        {playerId:'p9',gender:'M',rank:3,buyIn:500,rebuys:1,prize:700,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p1',gender:'M',rank:4,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p2',gender:'F',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p5',gender:'M',rank:7,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p3',gender:'M',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p6',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g4', date:'2025-02-01', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p2',gender:'F',rank:1,buyIn:500,rebuys:1,prize:2500,dealt:1,huWins:1,huLosses:0},
+        {playerId:'p6',gender:'F',rank:2,buyIn:500,rebuys:0,prize:1300,dealt:0,huWins:0,huLosses:1},
+        {playerId:'p1',gender:'M',rank:3,buyIn:500,rebuys:0,prize:650,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p7',gender:'M',rank:4,buyIn:500,rebuys:1,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p3',gender:'M',rank:5,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:6,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:7,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p5',gender:'M',rank:8,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p4',gender:'F',rank:9,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p9',gender:'M',rank:10,buyIn:500,rebuys:3,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g5', date:'2025-02-08', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p5',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2300,dealt:0,huWins:1,huLosses:0},
+        {playerId:'p9',gender:'M',rank:2,buyIn:500,rebuys:1,prize:1200,dealt:1,huWins:0,huLosses:1},
+        {playerId:'p4',gender:'F',rank:3,buyIn:500,rebuys:0,prize:600,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p2',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p1',gender:'M',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:7,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p6',gender:'F',rank:8,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p7',gender:'M',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p3',gender:'M',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g6', date:'2025-02-15', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p1',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2700,dealt:1,huWins:1,huLosses:0},
+        {playerId:'p3',gender:'M',rank:2,buyIn:500,rebuys:0,prize:1400,dealt:0,huWins:0,huLosses:1},
+        {playerId:'p8',gender:'F',rank:3,buyIn:500,rebuys:1,prize:700,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p5',gender:'M',rank:4,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p6',gender:'F',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p4',gender:'F',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p2',gender:'F',rank:7,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p9',gender:'M',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p7',gender:'M',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g7', date:'2025-02-22', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p4',gender:'F',rank:1,buyIn:500,rebuys:0,prize:2500,dealt:0,huWins:1,huLosses:0},
+        {playerId:'p7',gender:'M',rank:2,buyIn:500,rebuys:1,prize:1300,dealt:1,huWins:0,huLosses:1},
+        {playerId:'p6',gender:'F',rank:3,buyIn:500,rebuys:0,prize:650,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p9',gender:'M',rank:5,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p3',gender:'M',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p1',gender:'M',rank:7,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p2',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p5',gender:'M',rank:10,buyIn:500,rebuys:3,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g8', date:'2025-03-01', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p9',gender:'M',rank:1,buyIn:500,rebuys:0,prize:2600,dealt:1,huWins:1,huLosses:0},
+        {playerId:'p2',gender:'F',rank:2,buyIn:500,rebuys:0,prize:1400,dealt:0,huWins:0,huLosses:1},
+        {playerId:'p5',gender:'M',rank:3,buyIn:500,rebuys:1,prize:700,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p1',gender:'M',rank:4,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p7',gender:'M',rank:5,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p3',gender:'M',rank:6,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p4',gender:'F',rank:7,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p6',gender:'F',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g9', date:'2025-03-08', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p6',gender:'F',rank:1,buyIn:500,rebuys:0,prize:2400,dealt:1,huWins:1,huLosses:0},
+        {playerId:'p1',gender:'M',rank:2,buyIn:500,rebuys:1,prize:1200,dealt:0,huWins:0,huLosses:1},
+        {playerId:'p3',gender:'M',rank:3,buyIn:500,rebuys:0,prize:600,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p2',gender:'F',rank:5,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:6,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p5',gender:'M',rank:7,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p7',gender:'M',rank:8,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p4',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p9',gender:'M',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+      { id:'g10', date:'2025-03-15', session:'1', season:'2025', entryFee:500, pool:0, results:[
+        {playerId:'p2',gender:'F',rank:1,buyIn:500,rebuys:0,prize:2800,dealt:0,huWins:1,huLosses:0},
+        {playerId:'p4',gender:'F',rank:2,buyIn:500,rebuys:0,prize:1500,dealt:1,huWins:0,huLosses:1},
+        {playerId:'p7',gender:'M',rank:3,buyIn:500,rebuys:1,prize:750,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p6',gender:'F',rank:4,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p3',gender:'M',rank:5,buyIn:500,rebuys:0,prize:0,dealt:1,huWins:0,huLosses:0},
+        {playerId:'p1',gender:'M',rank:6,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p9',gender:'M',rank:7,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p5',gender:'M',rank:8,buyIn:500,rebuys:2,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p8',gender:'F',rank:9,buyIn:500,rebuys:1,prize:0,dealt:0,huWins:0,huLosses:0},
+        {playerId:'p10',gender:'F',rank:10,buyIn:500,rebuys:0,prize:0,dealt:0,huWins:0,huLosses:0},
+      ]},
+    ];
+    saveDB(); renderAll();
+  }
+};
+</script>
+</body>
+</html>
