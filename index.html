@@ -612,12 +612,19 @@ select option { background: var(--bg3); }
       </div>
     </div>
     <!-- 比賽基本資訊 -->
-    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px;">
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:16px;">
       <div class="form-group"><label>比賽日期</label><input type="date" id="modal-date"></div>
       <div class="form-group"><label>賽季</label><select id="modal-season"><option value="2025">2025</option><option value="2024">2024</option></select></div>
       <div class="form-group"><label>場次</label><select id="modal-session"><option value="1">Session 1</option><option value="2">Session 2</option><option value="3">Session 3</option><option value="4">Session 4</option></select></div>
-      <div class="form-group"><label>報名費</label><input type="number" id="modal-entry-fee"></div>
-      <div class="form-group"><label>公積金</label><input type="number" id="modal-pool"></div>
+      <div class="form-group"><label>買入金額</label><input type="number" id="modal-entry-fee"></div>
+    </div>
+    <!-- 獎金資訊（唯讀）-->
+    <div id="modal-prize-info" style="background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--red);padding:12px 16px;margin-bottom:16px;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;">
+      <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;color:var(--text3);letter-spacing:1px;">總獎金池</div><div id="modal-total-pool" style="font-family:'Teko',sans-serif;font-size:20px;color:var(--white);font-weight:600;">—</div></div>
+      <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;color:#FFD700;letter-spacing:1px;">🥇 1st (60%)</div><div id="modal-prize1" style="font-family:'Teko',sans-serif;font-size:20px;color:#FFD700;font-weight:600;">—</div></div>
+      <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;color:#C0C0C0;letter-spacing:1px;">🥈 2nd (30%)</div><div id="modal-prize2" style="font-family:'Teko',sans-serif;font-size:20px;color:#C0C0C0;font-weight:600;">—</div></div>
+      <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;color:#CD7F32;letter-spacing:1px;">🥉 3rd (10%)</div><div id="modal-prize3" style="font-family:'Teko',sans-serif;font-size:20px;color:#CD7F32;font-weight:600;">—</div></div>
+      <div style="text-align:center;"><div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;color:var(--text3);letter-spacing:1px;">🏦 公積金 (10%)</div><div id="modal-pool-fund" style="font-family:'Teko',sans-serif;font-size:20px;color:var(--text2);font-weight:600;">—</div></div>
     </div>
     <!-- 選手成績 -->
     <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">選手成績</div>
@@ -879,7 +886,8 @@ function syncToSheet() {
   const rankPeace = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].first, false);
   const rankTight = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].rebuyRate, false);
   const rankFish  = rank(DB.players.filter(p=>statsMap[p.id].pGames>=3), p=>statsMap[p.id].rebuyRate);
-  const rankTilt  = rank(DB.players, p=>statsMap[p.id].totalRebuys);
+  const rankTilt   = rank(DB.players, p=>statsMap[p.id].maxSingleRebuys);
+  const rankBubble = rank(DB.players, p=>statsMap[p.id].fourth);
 
   const rk = (map, pid) => map[pid] || '';
 
@@ -931,9 +939,9 @@ S${g.session||1}`;
     hdr('🐟[魚王]\n平均重買率最高',C_AWARD_RED),
     hdr('[魚王]\nSource',C_AWARD_RED),
     hdr('🤯[上頭王]',C_AWARD_RED),
-    hdr('[上頭王]\n累計重買最多',C_AWARD_RED),
+    hdr('[上頭王]\n單場最高重買',C_AWARD_RED),
     hdr('🦖[泡泡龍]',C_AWARD_RED),
-    hdr('[泡泡龍]\n吃正泡最多',C_AWARD_RED),
+    hdr('[泡泡龍]\n正泡(第四名)次數',C_AWARD_RED),
   );
 
   // ── 標頭行2 ──
@@ -1088,15 +1096,19 @@ S${g.session||1}`;
       cell(fishRk,(fishRk===1)?C_RANK1:C_AWARD_RED,fishRk===1,C_DARK_TEXT,false,'center')
     );
 
-    // 上頭王
+    // 上頭王（單場最高重買）
     const tiltRk = rk(rankTilt,p.id);
     row.push(
-      plain(s.totalRebuys, C_AWARD_RED),
+      plain(s.maxSingleRebuys, C_AWARD_RED),
       cell(tiltRk,(tiltRk===1)?C_RANK1:C_AWARD_RED,tiltRk===1,C_DARK_TEXT,false,'center')
     );
 
-    // 泡泡龍（手動）
-    row.push(plain('', C_AWARD_RED), plain('', C_AWARD_RED));
+    // 泡泡龍（第四名次數）
+    const bubbleRk = rk(rankBubble,p.id);
+    row.push(
+      plain(s.fourth, C_AWARD_RED),
+      cell(bubbleRk,(bubbleRk===1)?C_RANK1:C_AWARD_RED,bubbleRk===1,C_DARK_TEXT,false,'center')
+    );
 
     return row;
   });
@@ -1340,10 +1352,11 @@ function calcGamePrizes() {
   // i.e. 1st=60%*90%=54% of total, etc. But that contradicts "60% is 1st prize"
   // Best interpretation: 1st=60%, 2nd=30%, 3rd=10% of the PRIZE pool (90% of total)
   // So 1st = totalPool * 0.9 * 0.6, 2nd = *0.9*0.3, 3rd = *0.9*0.1, poolFund = totalPool*0.1
+  // 規則：總池 10%→公積金，60%→1st，30%→2nd，10%→3rd
   return { totalPool, poolFund,
-    p1: Math.round(totalPool * 0.9 * 0.6),
-    p2: Math.round(totalPool * 0.9 * 0.3),
-    p3: Math.round(totalPool * 0.9 * 0.1) };
+    p1: Math.round(totalPool * 0.6),
+    p2: Math.round(totalPool * 0.3),
+    p3: Math.round(totalPool * 0.1) };
 }
 
 function updatePrizePreview() {
@@ -1411,7 +1424,18 @@ function saveGame() {
     });
   });
   if (!ok || !results.length) return notify('請填寫所有選手的名次', true);
-  DB.games.push({ id: Date.now().toString(), date, session, season, entryFee, pool, results });
+  const prizes = calcGamePrizes();
+  // 把獎金寫進各選手 result（確保以最終計算值覆蓋）
+  results.forEach(r => {
+    r.prize = r.rank===1 ? prizes.p1 : r.rank===2 ? prizes.p2 : r.rank===3 ? prizes.p3 : 0;
+  });
+  DB.games.push({
+    id: Date.now().toString(), date, session, season, entryFee,
+    pool: prizes.poolFund,
+    totalPool: prizes.totalPool,
+    prize1: prizes.p1, prize2: prizes.p2, prize3: prizes.p3,
+    results
+  });
   saveDB(); clearEntry(); notify('✅ 比賽已儲存！'); renderHistory();
 }
 
@@ -1421,7 +1445,7 @@ function computeStats(season) {
   const games = season === 'all' ? DB.games : DB.games.filter(g => g.season === season);
   const stats = {};
   DB.players.forEach(p => {
-    stats[p.id] = { id:p.id, name:p.name, gender:p.gender, games:0, rankPts:0, totalBuyIn:0, totalRebuys:0, totalPrize:0, first:0, second:0, third:0, dealt:0, huWins:0, huLosses:0, allGames:[] };
+    stats[p.id] = { id:p.id, name:p.name, gender:p.gender, games:0, rankPts:0, totalBuyIn:0, totalRebuys:0, totalPrize:0, first:0, second:0, third:0, fourth:0, dealt:0, huWins:0, huLosses:0, allGames:[], maxSingleRebuys:0 };
   });
   const allDates = games.map(g => g.date).sort();
   games.forEach(g => {
@@ -1432,7 +1456,11 @@ function computeStats(season) {
       s.totalBuyIn += r.buyIn + (r.rebuys * r.buyIn);
       s.totalRebuys += r.rebuys; s.totalPrize += r.prize; s.dealt += r.dealt;
       s.huWins += r.huWins||0; s.huLosses += r.huLosses||0;
-      if (r.rank===1) s.first++; if (r.rank===2) s.second++; if (r.rank===3) s.third++;
+      if (r.rank===1) s.first++;
+      if (r.rank===2) s.second++;
+      if (r.rank===3) s.third++;
+      if (r.rank===4) s.fourth++;
+      if ((r.rebuys||0) > s.maxSingleRebuys) s.maxSingleRebuys = r.rebuys||0;
       s.allGames.push(g.date);
     });
   });
@@ -1639,8 +1667,8 @@ const AWARD_DEFS = [
   { key:'oneshot', icon:'🔫', zh:'一發入魂', en:'One Shot',          desc:'一次買入就獲得冠軍', fn:s=>s.filter(x=>x.first>0&&x.totalRebuys===0).sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次` },
   { key:'topdog2', icon:'✌️', zh:'最強老二', en:'Best 2nd',          desc:'第二名最多次', fn:s=>s.sort((a,b)=>b.second-a.second), fmt:s=>`${s.second} 次` },
   { key:'mama',    icon:'👩‍🦰', zh:'愛心媽媽', en:'Mama Love',        desc:'發牌次數最多（手動記錄）', fn:s=>s.sort((a,b)=>b.dealt-a.dealt), fmt:s=>`${s.dealt} 次發牌` },
-  { key:'bubble',  icon:'🦖', zh:'泡泡龍', en:'Bubble',              desc:'吃正泡最多 (手動統計)', fn:s=>s.sort((a,b)=>a.games-b.games), fmt:s=>`手動統計` },
-  { key:'uphead',  icon:'🤯', zh:'上頭王', en:'Tilt King',           desc:'單場重買最多', fn:s=>s.sort((a,b)=>b.totalRebuys-a.totalRebuys), fmt:s=>`${s.totalRebuys} 次重買(累計)` },
+  { key:'bubble',  icon:'🦖', zh:'泡泡龍', en:'Bubble',              desc:'正泡(第四名)次數最多', fn:s=>s.sort((a,b)=>b.fourth-a.fourth), fmt:s=>`${s.fourth} 次正泡` },
+  { key:'uphead',  icon:'🤯', zh:'上頭王', en:'Tilt King',           desc:'單場最高重買次數最多', fn:s=>s.sort((a,b)=>b.maxSingleRebuys-a.maxSingleRebuys), fmt:s=>`單場最多 ${s.maxSingleRebuys} 次重買` },
 ];
 
 function renderAwards() {
@@ -1670,20 +1698,22 @@ function renderHistory() {
   const cont = document.getElementById('history-table');
   if (!games.length) { cont.innerHTML = '<div style="padding:20px;color:var(--text3)">尚無比賽紀錄</div>'; return; }
   cont.innerHTML = `<table><thead><tr>
-    <th>日期</th><th>賽季</th><th>場次</th><th>選手數</th><th>獎金池</th>
-    <th>冠軍</th><th>亞軍</th><th>季軍</th><th>操作</th>
+    <th>日期</th><th>賽季</th><th>場次</th><th>選手數</th><th>總獎金池</th><th>公積金</th>
+    <th>🥇 冠軍</th><th>🥈 亞軍</th><th>🥉 季軍</th><th>操作</th>
   </tr></thead><tbody>` +
     games.map(g => {
       const res = [...g.results].sort((a,b)=>a.rank-b.rank);
       const get = (rank) => { const r = res.find(x=>x.rank===rank); return r ? (DB.players.find(p=>p.id===r.playerId)?.name||'?') : '—'; };
       const totalPrize = res.reduce((s,r)=>s+r.prize,0);
+      const poolDisplay = g.pool ? '$'+g.pool.toLocaleString() : '—';
       return `<tr>
         <td>${g.date} <span class="session-badge">S${g.session||1}</span></td>
         <td>${g.season}</td>
         <td>S${g.session||1}</td>
         <td>${res.length}</td>
         <td>$${totalPrize.toLocaleString()}</td>
-        <td>🥇 ${get(1)}</td><td>🥈 ${get(2)}</td><td>🥉 ${get(3)}</td>
+        <td>${poolDisplay}</td>
+        <td>${get(1)}</td><td>${get(2)}</td><td>${get(3)}</td>
         <td style="display:flex;gap:5px;">
           <button class="btn secondary" onclick="openGameModal('${g.id}')" style="padding:4px 10px;font-size:11px">✏️ 查看/編輯</button>
           <button class="btn danger" onclick="deleteGame('${g.id}')" style="padding:4px 10px;font-size:11px">刪除</button>
@@ -1707,7 +1737,13 @@ function openGameModal(gameId) {
   document.getElementById('modal-season').value = g.season;
   document.getElementById('modal-session').value = g.session || '1';
   document.getElementById('modal-entry-fee').value = g.entryFee || 0;
-  document.getElementById('modal-pool').value = g.pool || 0;
+  // 顯示獎金分配資訊
+  const tp = g.totalPool || 0;
+  document.getElementById('modal-total-pool').textContent = tp ? '$'+tp.toLocaleString() : '—';
+  document.getElementById('modal-prize1').textContent = g.prize1 ? '$'+g.prize1.toLocaleString() : (tp?'$'+(tp*0.6|0).toLocaleString():'—');
+  document.getElementById('modal-prize2').textContent = g.prize2 ? '$'+g.prize2.toLocaleString() : (tp?'$'+(tp*0.3|0).toLocaleString():'—');
+  document.getElementById('modal-prize3').textContent = g.prize3 ? '$'+g.prize3.toLocaleString() : (tp?'$'+(tp*0.1|0).toLocaleString():'—');
+  document.getElementById('modal-pool-fund').textContent = g.pool ? '$'+g.pool.toLocaleString() : (tp?'$'+(tp*0.1|0).toLocaleString():'—');
 
   // 建立選手成績列
   modalResultRows = g.results.map((r, i) => ({ rowId: 'mr_' + i + '_' + Date.now(), ...r }));
@@ -1804,16 +1840,29 @@ function saveGameEdit() {
   g.season  = document.getElementById('modal-season').value;
   g.session = document.getElementById('modal-session').value;
   g.entryFee = parseFloat(document.getElementById('modal-entry-fee').value) || 0;
-  g.pool    = parseFloat(document.getElementById('modal-pool').value) || 0;
 
-  // 更新成績，重新計算 huWins/huLosses
+  // 重新計算獎金
+  const totalPool = modalResultRows.reduce((sum,r) => sum + (r.buyIn||0)*(1+(r.rebuys||0)), 0);
+  g.totalPool = totalPool;
+  g.pool    = Math.round(totalPool * 0.1);
+  g.prize1  = Math.round(totalPool * 0.6);
+  g.prize2  = Math.round(totalPool * 0.3);
+  g.prize3  = Math.round(totalPool * 0.1);
+  // 更新 modal 顯示
+  document.getElementById('modal-total-pool').textContent = '$'+totalPool.toLocaleString();
+  document.getElementById('modal-prize1').textContent = '$'+g.prize1.toLocaleString();
+  document.getElementById('modal-prize2').textContent = '$'+g.prize2.toLocaleString();
+  document.getElementById('modal-prize3').textContent = '$'+g.prize3.toLocaleString();
+  document.getElementById('modal-pool-fund').textContent = '$'+g.pool.toLocaleString();
+
+  // 更新成績，重新計算 huWins/huLosses 和獎金
   g.results = modalResultRows.map(r => ({
     playerId: r.playerId,
     gender: r.gender || (DB.players.find(p=>p.id===r.playerId)?.gender || 'M'),
     rank: parseInt(r.rank),
     buyIn: parseFloat(r.buyIn) || 0,
     rebuys: parseInt(r.rebuys) || 0,
-    prize: parseFloat(r.prize) || 0,
+    prize: r.rank===1 ? g.prize1 : r.rank===2 ? g.prize2 : r.rank===3 ? g.prize3 : 0,
     dealt: parseInt(r.dealt) || 0,
     huWins: r.rank === 1 ? 1 : 0,
     huLosses: r.rank === 2 ? 1 : 0,
