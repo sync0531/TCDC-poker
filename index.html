@@ -852,6 +852,7 @@ function doGet(e) {
 let DB = { players: [], games: [], config: { minGames: 3, photoRank: 3 }, sheetUrl: '' };
 let lang = 'zh';
 let lbView = 'all';
+let lbSort = { key: 'mvpScore', dir: -1 }; // dir: -1=降冪, 1=升冪
 
 function loadDB() {
   const raw = localStorage.getItem('pokerDB');
@@ -1288,6 +1289,7 @@ function showTab(name) {
 }
 function setLbView(v) {
   lbView = v;
+  lbSort = { key: 'mvpScore', dir: -1 }; // 切換分類時重置排序
   document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
   event.currentTarget.classList.add('active');
   renderLeaderboard();
@@ -1742,20 +1744,86 @@ function renderMvpChart(season) {
   });
 }
 
+function lbSortBy(key) {
+  if (lbSort.key === key) lbSort.dir *= -1;
+  else { lbSort.key = key; lbSort.dir = -1; }
+  renderLeaderboard();
+}
+
 function renderLeaderboard() {
   const season = document.getElementById('lb-season').value;
   const stats = computeStats(season);
   let arr = Object.values(stats).filter(s => s.games > 0);
   if (lbView === 'male') arr = arr.filter(s => s.gender === 'M');
   if (lbView === 'female') arr = arr.filter(s => s.gender === 'F');
-  arr.sort((a,b) => b.mvpScore - a.mvpScore);
+
+  // 先計算各獎項的 award2ndCount（與 renderAwards 共用邏輯）
+  arr.forEach(s => { s._award2ndCount = 0; });
+  AWARD_DEFS.filter(d => !d.special).forEach(def => {
+    const sorted = def.fn([...arr]);
+    if (sorted.length < 2) return;
+    const top1Val = def.fmt(sorted[0]);
+    const runner = sorted.find(s => def.fmt(s) !== top1Val);
+    if (!runner) return;
+    const runnerVal = def.fmt(runner);
+    sorted.filter(s => def.fmt(s) === runnerVal && def.fmt(s) !== top1Val)
+          .forEach(s => { s._award2ndCount = (s._award2ndCount||0) + 1; });
+  });
+
+  // 各特殊指標：正泡次數=fourth, 單場最高重買=maxSingleRebuys, 一發入魂=oneShotCount
+  // 排序
+  arr.sort((a, b) => {
+    const va = a[lbSort.key] ?? 0;
+    const vb = b[lbSort.key] ?? 0;
+    return (vb - va) * lbSort.dir * -1; // dir=-1降冪
+  });
+
   const cont = document.getElementById('lb-table');
   if (!arr.length) { cont.innerHTML = '<div style="padding:20px;color:var(--text3)">尚無資料</div>'; return; }
-  cont.innerHTML = `<table><thead><tr><th>排名</th><th>選手</th><th>性別</th><th>MVP積分</th><th>名次積分(A)</th><th>近期參賽率(C)</th><th>場次</th><th>1st</th><th>2nd</th><th>3rd</th><th>總買入</th><th>總獎金</th><th>淨利</th><th>ROI%</th></tr></thead><tbody>` +
-    arr.map((s,i) => {
-      const rk=i+1; const rkClass=rk===1?'rank gold':rk===2?'rank silver':rk===3?'rank bronze':'rank';
-      return `<tr><td><span class="${rkClass}">${rk}</span></td><td class="player-name">${s.name}</td><td><span class="badge ${s.gender==='F'?'female':'male'}">${s.gender==='F'?'♀':'♂'}</span></td><td class="score">${s.mvpScore.toFixed(1)}</td><td>${s.rankPts}</td><td>${(s.recentRate*100).toFixed(0)}%</td><td>${s.games}</td><td>${s.first}</td><td>${s.second}</td><td>${s.third}</td><td>$${s.totalBuyIn.toLocaleString()}</td><td>$${s.totalPrize.toLocaleString()}</td><td>${colorNum(s.net)}</td><td>${colorNum(s.roi.toFixed(1),'%')}</td></tr>`;
-    }).join('') + '</tbody></table>';
+
+  // 欄位定義：{ key, label, render, title }
+  const cols = [
+    { key:'_rank',       label:'排名',          title:'依MVP積分排名', render:(s,i)=>{const rk=i+1;const rc=rk===1?'rank gold':rk===2?'rank silver':rk===3?'rank bronze':'rank';return `<span class="${rc}">${rk}</span>`;} },
+    { key:'name',        label:'選手',           title:'選手名稱',      render:s=>`<span class="player-name">${s.name}</span>` },
+    { key:'gender',      label:'性別',           title:'性別',          render:s=>`<span class="badge ${s.gender==='F'?'female':'male'}">${s.gender==='F'?'♀':'♂'}</span>` },
+    { key:'mvpScore',    label:'MVP積分',        title:'MVP綜合積分',    render:s=>`<span class="score">${s.mvpScore.toFixed(1)}</span>` },
+    { key:'rankPts',     label:'名次積分(A)',    title:'累計名次積分',   render:s=>s.rankPts },
+    { key:'recentRate',  label:'參賽率(C)',      title:'近期6場參賽率',  render:s=>`${(s.recentRate*100).toFixed(0)}%` },
+    { key:'games',       label:'場次',           title:'總參賽場次',     render:s=>s.games },
+    { key:'first',       label:'🥇 1st',         title:'第1名次數',      render:s=>s.first },
+    { key:'second',      label:'🥈 2nd',         title:'第2名次數',      render:s=>s.second },
+    { key:'third',       label:'🥉 3rd',         title:'第3名次數',      render:s=>s.third },
+    { key:'fourth',      label:'🫧 正泡',        title:'第4名(正泡)次數', render:s=>s.fourth||0 },
+    { key:'oneShotCount',label:'🔫 一發',        title:'一發入魂次數',   render:s=>s.oneShotCount||0 },
+    { key:'maxSingleRebuys', label:'🤯 最高重買', title:'單場最高重買次數', render:s=>s.maxSingleRebuys||0 },
+    { key:'totalRebuys', label:'重買總計',       title:'所有場次重買總次數', render:s=>s.totalRebuys },
+    { key:'dealt',       label:'👩‍🦰 發牌',      title:'累計發牌次數',   render:s=>s.dealt },
+    { key:'_award2ndCount', label:'✌️ 老二',    title:'全部獎項第2名次數', render:s=>s._award2ndCount||0 },
+    { key:'totalBuyIn',  label:'總買入',         title:'累計總買入金額', render:s=>`$${s.totalBuyIn.toLocaleString()}` },
+    { key:'totalPrize',  label:'總獎金',         title:'累計總獎金金額', render:s=>`$${s.totalPrize.toLocaleString()}` },
+    { key:'net',         label:'淨利',           title:'總獎金 - 總買入', render:s=>colorNum(s.net) },
+    { key:'roi',         label:'ROI%',           title:'投資報酬率',    render:s=>colorNum(s.roi.toFixed(1),'%') },
+    { key:'huRate',      label:'HU勝率',         title:'Head-up 勝率',  render:s=>`${(s.huRate*100).toFixed(0)}%` },
+    { key:'rebuyRate',   label:'重買率',         title:'平均每場重買率', render:s=>`${(s.rebuyRate*100).toFixed(1)}%` },
+    { key:'photoCount',  label:'📸 拍照',        title:'前三名次數',    render:s=>s.photoCount },
+  ];
+
+  // 不可排序的欄位
+  const noSort = new Set(['_rank', 'name', 'gender']);
+
+  const thHTML = cols.map(c => {
+    if (noSort.has(c.key)) return `<th title="${c.title}">${c.label}</th>`;
+    const isActive = lbSort.key === c.key;
+    const arrow = isActive ? (lbSort.dir === -1 ? ' ▼' : ' ▲') : '';
+    const activeStyle = isActive ? 'color:var(--red);cursor:pointer;white-space:nowrap;' : 'cursor:pointer;white-space:nowrap;';
+    return `<th title="${c.title}" style="${activeStyle}" onclick="lbSortBy('${c.key}')">${c.label}${arrow}</th>`;
+  }).join('');
+
+  const tbHTML = arr.map((s, i) => {
+    return `<tr>${cols.map(c => `<td>${c.key === '_rank' ? c.render(s,i) : c.render(s)}</td>`).join('')}</tr>`;
+  }).join('');
+
+  cont.innerHTML = `<table><thead><tr>${thHTML}</tr></thead><tbody>${tbHTML}</tbody></table>`;
 }
 
 const AWARD_DEFS = [
