@@ -1777,7 +1777,7 @@ const AWARD_DEFS = [
   { key:'pkking',  icon:'🦍', zh:'PK King', en:'PK King',            desc:'第1名/(第1名+第2名) 比率最高 (需≥3場HU)', fn:s=>s.filter(x=>(x.first+x.second)>=3).sort((a,b)=>(b.first/(b.first+b.second||1))-(a.first/(a.first+a.second||1))), fmt:s=>`${(s.first/(s.first+s.second)*100).toFixed(0)}% (${s.first}次1st/${s.first+s.second}場HU)` },
   { key:'lemon',   icon:'🍐', zh:'孔融讓梨', en:'Humble One',        desc:'第2名/(第1名+第2名) 比率最高 (需≥3場HU且至少1次第2名)', fn:s=>s.filter(x=>(x.first+x.second)>=3 && x.second>0).sort((a,b)=>(b.second/(b.first+b.second||1))-(a.second/(a.first+a.second||1))), fmt:s=>`${(s.second/(s.first+s.second)*100).toFixed(0)}% (${s.second}次2nd/${s.first+s.second}場HU)` },
   { key:'oneshot', icon:'🔫', zh:'一發入魂', en:'One Shot',          desc:'拿冠軍當場零重買的次數最多', fn:s=>s.filter(x=>x.oneShotCount>0).sort((a,b)=>b.oneShotCount-a.oneShotCount), fmt:s=>`${s.oneShotCount} 次` },
-  { key:'topdog2', icon:'✌️', zh:'最強老二', en:'Best 2nd',          desc:'第二名最多次', fn:s=>s.sort((a,b)=>b.second-a.second), fmt:s=>`${s.second} 次` },
+  { key:'topdog2', icon:'✌️', zh:'最強老二', en:'Best 2nd',          desc:'在全部獎項中拿到第2名次數最多', special:'allAward2nd', fmt:s=>`${s._award2ndCount||0} 個獎項第2名` },
   { key:'mama',    icon:'👩‍🦰', zh:'愛心媽媽', en:'Mama Love',        desc:'發牌次數最多（手動記錄）', fn:s=>s.sort((a,b)=>b.dealt-a.dealt), fmt:s=>`${s.dealt} 次發牌` },
   { key:'bubble',  icon:'🦖', zh:'泡泡龍', en:'Bubble',              desc:'正泡(第四名)次數最多', fn:s=>s.sort((a,b)=>b.fourth-a.fourth), fmt:s=>`${s.fourth} 次正泡` },
   { key:'uphead',  icon:'🤯', zh:'上頭王', en:'Tilt King',           desc:'單場最高重買次數最多', fn:s=>s.sort((a,b)=>b.maxSingleRebuys-a.maxSingleRebuys), fmt:s=>`單場最多 ${s.maxSingleRebuys} 次重買` },
@@ -1788,7 +1788,41 @@ function renderAwards() {
   const stats = computeStats(season);
   const arr = Object.values(stats).filter(s => s.games > 0);
   const minGames = DB.config?.minGames || 3;
+
+  // 先計算每位選手在各獎項中的第2名次數（用於最強老二）
+  // 排除 topdog2 本身和特殊獎項，避免循環
+  const award2ndCount = {};
+  arr.forEach(s => { award2ndCount[s.id] = 0; s._award2ndCount = 0; });
+  AWARD_DEFS.filter(d => !d.special).forEach(def => {
+    const sorted = def.fn([...arr]);
+    if (sorted.length < 2) return;
+    const qualified = !def.req || (sorted[0] && sorted[0].games >= minGames);
+    if (!qualified) return;
+    // 找第1名的格式化值
+    const top1Val = def.fmt(sorted[0]);
+    // 第2名：跳過所有與第1名並列的，取下一個不同值的人
+    const runner = sorted.find(s => def.fmt(s) !== top1Val);
+    if (!runner) return;
+    const runnerVal = def.fmt(runner);
+    // 所有與runner並列的人都算一次第2名
+    sorted.filter(s => def.fmt(s) === runnerVal && def.fmt(s) !== top1Val)
+          .forEach(s => { s._award2ndCount = (s._award2ndCount||0) + 1; });
+  });
+
   document.getElementById('awards-grid').innerHTML = AWARD_DEFS.map(def => {
+    // 特殊處理最強老二
+    if (def.special === 'allAward2nd') {
+      const sorted = [...arr].sort((a,b) => (b._award2ndCount||0) - (a._award2ndCount||0));
+      const winner = sorted[0];
+      if (!winner || !winner._award2ndCount) {
+        return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3><div class="tbd">—</div><div class="desc">${def.desc}</div></div></div>`;
+      }
+      const topCount = winner._award2ndCount;
+      const tied = sorted.filter(s => s._award2ndCount === topCount);
+      const names = tied.map(s => s.name).join(' / ');
+      return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3><div class="holder">${names}</div><div class="detail">${topCount} 個獎項第2名</div><div class="desc">${def.desc}</div></div></div>`;
+    }
+
     const sorted = def.fn([...arr]);
     const winner = sorted[0];
     const qualified = !def.req || (winner && winner.games >= minGames);
