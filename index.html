@@ -106,6 +106,28 @@ main { max-width: 1440px; margin: 0 auto; padding: 28px 32px; }
 
 /* TABLE */
 .table-wrap { overflow-x: auto; border: 1px solid var(--border); }
+
+/* 排行榜 sticky 欄位 */
+#lb-table table { border-collapse: separate; border-spacing: 0; }
+#lb-table th:nth-child(1),
+#lb-table td:nth-child(1) {
+  position: sticky; left: 0; z-index: 2;
+  background: var(--bg3);
+  border-right: 1px solid var(--border);
+  min-width: 52px; max-width: 52px; width: 52px;
+  text-align: center;
+}
+#lb-table th:nth-child(2),
+#lb-table td:nth-child(2) {
+  position: sticky; left: 52px; z-index: 2;
+  background: var(--bg3);
+  border-right: 2px solid var(--red);
+  min-width: 90px;
+}
+#lb-table tr:hover td:nth-child(1),
+#lb-table tr:hover td:nth-child(2) { background: var(--bg4); }
+#lb-table thead th:nth-child(1),
+#lb-table thead th:nth-child(2) { background: var(--bg4); z-index: 3; }
 table { width: 100%; border-collapse: collapse; font-size: 13px; }
 thead tr { background: var(--bg3); }
 th { padding: 11px 14px; text-align: left; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: 1.5px; font-size: 11px; text-transform: uppercase; color: var(--text3); border-bottom: 1px solid var(--border2); white-space: nowrap; }
