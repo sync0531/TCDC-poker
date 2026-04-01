@@ -708,97 +708,61 @@ select option { background: var(--bg3); }
 <div class="section" id="sec-config">
   <div class="config-section">
     <div class="config-block">
-      <h3 data-zh="🔗 Google 試算表連結" data-en="🔗 Google Sheets Connection">🔗 Google 試算表連結</h3>
-      <div class="sheet-url-bar">
-        <input type="text" id="sheet-url" placeholder="貼上 Google Apps Script Web App URL">
-        <button class="btn" onclick="saveSheetUrl()">連結</button>
-        <button class="btn outline" onclick="testSheet()">測試</button>
-        <button class="btn secondary" onclick="manualSync()">🔄 立即同步</button>
+      <h3>☁️ 雲端同步（Supabase）</h3>
+      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.7;">
+        所有人只要開啟同一個網址就能<strong style="color:var(--white)">自動共用資料</strong>，不需要任何伺服器。<br>
+        每 30 秒自動同步，儲存時即時推送。anon key 可公開分享，安全無虞。
       </div>
-      <div style="font-size:12px;color:var(--text3);margin-bottom:16px" data-zh="連結後，資料會同步儲存到 Google 試算表，並可從任何裝置讀取。" data-en="Once connected, data syncs to Google Sheets and can be accessed from any device.">連結後，資料會同步儲存到 Google 試算表，並可從任何裝置讀取。</div>
-      <div class="setup-steps">
-        <div class="setup-step"><div class="content"><h4 data-zh="建立 Google 試算表" data-en="Create Google Sheet">建立 Google 試算表</h4><p data-zh="前往 sheets.google.com，建立新試算表，命名為「撲克錦標賽」" data-en="Go to sheets.google.com, create new spreadsheet named 'Poker Tournament'">前往 sheets.google.com，建立新試算表，命名為「撲克錦標賽」</p></div></div>
-        <div class="setup-step"><div class="content"><h4 data-zh="開啟 Apps Script" data-en="Open Apps Script">開啟 Apps Script</h4><p data-zh="在試算表中點選「擴充功能」→「Apps Script」" data-en="In the spreadsheet, click 'Extensions' → 'Apps Script'">在試算表中點選「擴充功能」→「Apps Script」</p></div></div>
-        <div class="setup-step">
-          <div class="content">
-            <h4 data-zh="貼上以下程式碼" data-en="Paste this code">貼上以下程式碼</h4>
-            <div class="code-box" id="gas-code">// ── TCDC Poker Apps Script v2 (支援顏色格式) ──
 
-function doPost(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var data = JSON.parse(e.postData.contents);
-  var sheet = ss.getSheetByName(data.sheet) || ss.insertSheet(data.sheet);
-
-  if (data.action === 'write_formatted') {
-    // 支援顏色格式的完整寫入
-    sheet.clearContents();
-    sheet.clearFormats();
-
-    var rows = data.rows;
-    if (!rows || !rows.length) {
-      return ContentService.createTextOutput(JSON.stringify({ok:true}))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    // 寫入所有資料
-    var values = rows.map(function(r) {
-      return r.map(function(c) { return c.v !== undefined ? c.v : c; });
-    });
-    sheet.getRange(1, 1, values.length, values[0].length).setValues(values);
-
-    // 套用顏色（逐列處理）
-    rows.forEach(function(row, ri) {
-      row.forEach(function(cell, ci) {
-        if (cell && cell.bg) {
-          sheet.getRange(ri+1, ci+1).setBackground(cell.bg);
-        }
-        if (cell && cell.bold) {
-          sheet.getRange(ri+1, ci+1).setFontWeight('bold');
-        }
-        if (cell && cell.fc) {
-          sheet.getRange(ri+1, ci+1).setFontColor(cell.fc);
-        }
-        if (cell && cell.wrap) {
-          sheet.getRange(ri+1, ci+1).setWrap(true);
-        }
-        if (cell && cell.align) {
-          sheet.getRange(ri+1, ci+1).setHorizontalAlignment(cell.align);
-        }
-      });
-    });
-
-    // 凍結前3欄、前2列
-    sheet.setFrozenRows(2);
-    sheet.setFrozenColumns(3);
-
-    // 自動調整欄寬
-    sheet.autoResizeColumns(1, values[0].length);
-
-  } else if (data.action === 'append') {
-    sheet.appendRow(data.row);
-  } else if (data.action === 'write') {
-    sheet.clearContents();
-    data.rows.forEach(function(r) { sheet.appendRow(r); });
-  }
-
-  return ContentService.createTextOutput(JSON.stringify({ok:true}))
-    .setMimeType(ContentService.MimeType.JSON);
-}
-
-function doGet(e) {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName(e.parameter.sheet);
-  if (!sheet) return ContentService.createTextOutput(JSON.stringify({rows:[]}))
-    .setMimeType(ContentService.MimeType.JSON);
-  var rows = sheet.getDataRange().getValues();
-  return ContentService.createTextOutput(JSON.stringify({rows:rows}))
-    .setMimeType(ContentService.MimeType.JSON);
-}</div>
-            <button class="btn outline" style="margin-top:8px;font-size:12px" onclick="copyCode()">複製程式碼</button>
-          </div>
+      <div style="margin-bottom:12px;">
+        <label style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px;">Supabase Project URL</label>
+        <div class="sheet-url-bar">
+          <input type="text" id="sb-url" placeholder="https://xxxxxxxxxxxx.supabase.co">
         </div>
-        <div class="setup-step"><div class="content"><h4 data-zh="部署為網頁應用程式" data-en="Deploy as Web App">部署為網頁應用程式</h4><p data-zh="點選「部署」→「新增部署」→「網頁應用程式」→「任何人均可存取」→「部署」，複製 URL 貼到上方欄位" data-en="Click 'Deploy' → 'New deployment' → 'Web app' → 'Anyone' → 'Deploy', copy URL above">點選「部署」→「新增部署」→「網頁應用程式」→「任何人均可存取」→「部署」，複製 URL 貼到上方欄位</p></div></div>
       </div>
+      <div style="margin-bottom:16px;">
+        <label style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px;">Anon Key（公開金鑰，可分享）</label>
+        <div class="sheet-url-bar">
+          <input type="text" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-family:monospace;font-size:11px;">
+          <button class="btn" onclick="saveSupabaseConfig()">儲存</button>
+          <button class="btn outline" onclick="testSupabase()">測試</button>
+          <button class="btn secondary" onclick="manualSync()">🔄 立即同步</button>
+        </div>
+      </div>
+
+      <div class="setup-steps">
+        <div class="setup-step"><div class="content">
+          <h4>建立免費帳號</h4>
+          <p>前往 <a href="https://supabase.com" target="_blank" style="color:var(--red)">supabase.com</a> → Start for free → 用 GitHub 或 Google 登入</p>
+        </div></div>
+        <div class="setup-step"><div class="content">
+          <h4>建立新專案</h4>
+          <p>New Project → 填專案名稱「tcdc-poker」、設定密碼、選地區（Singapore 最近）→ Create project（等約 1 分鐘）</p>
+        </div></div>
+        <div class="setup-step"><div class="content">
+          <h4>建立資料表</h4>
+          <p>左側 → <strong>SQL Editor</strong> → New query → 貼上下方 SQL → Run</p>
+          <div class="code-box" style="font-size:11px;margin-top:8px;">CREATE TABLE poker_data (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+INSERT INTO poker_data (id, data) VALUES ('main', '{}');
+ALTER TABLE poker_data ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read" ON poker_data FOR SELECT USING (true);
+CREATE POLICY "Public write" ON poker_data FOR ALL USING (true);</div>
+          <button class="btn outline" style="margin-top:8px;font-size:12px" onclick="copySQL()">複製 SQL</button>
+        </div></div>
+        <div class="setup-step"><div class="content">
+          <h4>取得金鑰</h4>
+          <p>左側 → <strong>Project Settings</strong> → API → 複製 <strong>Project URL</strong> 和 <strong>anon public</strong> key 貼到上方欄位</p>
+        </div></div>
+        <div class="setup-step"><div class="content">
+          <h4>儲存並測試</h4>
+          <p>點「儲存」→「測試」確認連線成功 → 把 URL 和 anon key 分享給其他人貼入設定頁即可</p>
+        </div></div>
+      </div>
+      <div id="sync-status" style="display:none;margin-top:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);font-size:13px;"></div>
     </div>
     <div class="config-block">
       <h3 data-zh="📊 積分規則" data-en="📊 Scoring Rules">📊 積分規則</h3>
@@ -849,7 +813,7 @@ function doGet(e) {
 </main>
 
 <script>
-let DB = { players: [], games: [], config: { minGames: 3, photoRank: 3 }, sheetUrl: '' };
+let DB = { players: [], games: [], config: { minGames: 3, photoRank: 3 }, sbUrl: '', sbKey: '', sheetUrl: '' };
 let lang = 'zh';
 let lbView = 'all';
 let lbSort = { key: 'mvpScore', dir: -1 }; // dir: -1=降冪, 1=升冪
@@ -863,8 +827,23 @@ function loadDB() {
 }
 function saveDB() {
   localStorage.setItem('pokerDB', JSON.stringify(DB));
-  if (DB.sheetUrl) syncToSheet();
+  if (DB.sbUrl && DB.sbKey) syncToSupabase();
 }
+function syncToSupabase() {
+  if (!DB.sbUrl || !DB.sbKey) return;
+  const payload = { id: 'main', data: DB, updated_at: new Date().toISOString() };
+  fetch(`${DB.sbUrl}/rest/v1/poker_data?id=eq.main`, {
+    method: 'PATCH',
+    headers: {
+      'Content-Type': 'application/json',
+      'apikey': DB.sbKey,
+      'Authorization': 'Bearer ' + DB.sbKey,
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ data: DB, updated_at: new Date().toISOString() })
+  }).catch(() => {});
+}
+// 保留舊名稱供相容
 function syncToSheet() {
   if (!DB.sheetUrl) return;
 
@@ -1245,21 +1224,20 @@ S${g.session||1}`;
   });
 }
 
-// ── 從 Google Sheets 同步資料回來 ──
-function syncFromSheet(callback) {
-  if (!DB.sheetUrl) { if(callback) callback(false,'未設定 Google Sheets URL'); return; }
-  const url = DB.sheetUrl + '?sheet=PokerData';
-  fetch(url)
-    .then(r => r.json())
-    .then(data => {
-      if (!data.rows || !data.rows.length) { if(callback) callback(false,'試算表無資料'); return; }
-      // 找最後一筆 DATA 列
-      const dataRow = [...data.rows].reverse().find(r => r[0] === 'DATA');
-      if (!dataRow) { if(callback) callback(false,'試算表中找不到資料'); return; }
-      const parsed = JSON.parse(dataRow[1]);
-      DB = { ...DB, ...parsed };
-      // 保留目前的 sheetUrl（避免被覆蓋成空的）
-      if (!DB.sheetUrl) DB.sheetUrl = document.getElementById('sheet-url').value.trim();
+// ── 從 Supabase 同步資料回來 ──
+function syncFromSheet(callback) { syncFromSupabase(callback); } // 相容舊名稱
+function syncFromSupabase(callback) {
+  if (!DB.sbUrl || !DB.sbKey) { if(callback) callback(false, '未設定 Supabase URL/Key'); return; }
+  fetch(`${DB.sbUrl}/rest/v1/poker_data?id=eq.main&select=data,updated_at`, {
+    headers: { 'apikey': DB.sbKey, 'Authorization': 'Bearer ' + DB.sbKey }
+  })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(rows => {
+      if (!rows || !rows.length || !rows[0].data) { if(callback) callback(false, '資料庫無資料'); return; }
+      const record = rows[0].data;
+      if (!record.players) { if(callback) callback(false, '資料格式錯誤'); return; }
+      const prevUrl = DB.sbUrl, prevKey = DB.sbKey;
+      DB = { ...record, sbUrl: prevUrl, sbKey: prevKey };
       localStorage.setItem('pokerDB', JSON.stringify(DB));
       renderAll();
       if(callback) callback(true);
@@ -2114,24 +2092,70 @@ function clearHistory() {
 function loadConfig() {
   document.getElementById('cfg-min-games').value = DB.config?.minGames || 3;
   document.getElementById('cfg-photo-rank').value = DB.config?.photoRank || 3;
-  document.getElementById('sheet-url').value = DB.sheetUrl || '';
+  const urlEl = document.getElementById('sb-url');
+  const keyEl = document.getElementById('sb-key');
+  if (urlEl) urlEl.value = DB.sbUrl || '';
+  if (keyEl) keyEl.value = DB.sbKey || '';
 }
 function saveConfig() {
   DB.config = { minGames: parseInt(document.getElementById('cfg-min-games').value)||3, photoRank: parseInt(document.getElementById('cfg-photo-rank').value)||3 };
   saveDB(); notify('設定已儲存');
 }
-function saveSheetUrl() { DB.sheetUrl = document.getElementById('sheet-url').value.trim(); saveDB(); notify('URL 已儲存'); }
+function saveSheetUrl() { DB.sheetUrl = ''; saveDB(); } // legacy stub
+function saveSupabaseConfig() {
+  const url = document.getElementById('sb-url').value.trim();
+  const key = document.getElementById('sb-key').value.trim();
+  if (!url) return notify('請填入 Supabase Project URL', true);
+  if (!key) return notify('請填入 Anon Key', true);
+  DB.sbUrl = url.replace(/\/$/, ''); // 去除尾斜線
+  DB.sbKey = key;
+  localStorage.setItem('pokerDB', JSON.stringify(DB));
+  notify('✅ Supabase 設定已儲存！');
+}
+function copySQL() {
+  const sql = `CREATE TABLE poker_data (
+  id TEXT PRIMARY KEY DEFAULT 'main',
+  data JSONB NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT now()
+);
+INSERT INTO poker_data (id, data) VALUES ('main', '{}');
+ALTER TABLE poker_data ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Public read" ON poker_data FOR SELECT USING (true);
+CREATE POLICY "Public write" ON poker_data FOR ALL USING (true);`;
+  navigator.clipboard.writeText(sql).then(() => notify('✅ SQL 已複製！')).catch(() => notify('複製失敗，請手動複製', true));
+}
 function manualSync() {
-  DB.sheetUrl = document.getElementById('sheet-url').value.trim() || DB.sheetUrl;
-  if (!DB.sheetUrl) return notify('請先填入並連結 Google Sheets URL', true);
+  const url = document.getElementById('sb-url')?.value.trim() || DB.sbUrl;
+  const key = document.getElementById('sb-key')?.value.trim() || DB.sbKey;
+  if (!url) return notify('請先填入 Supabase Project URL', true);
+  if (!key) return notify('請先填入 Anon Key', true);
+  DB.sbUrl = url.replace(/\/$/, '');
+  DB.sbKey = key;
   notify('🔄 同步中...');
-  syncFromSheet((ok, msg) => {
+  syncFromSupabase((ok, msg) => {
     if (ok) { notify('✅ 同步成功！資料已更新'); loadConfig(); }
-    else notify('❌ 同步失敗：' + (msg||'請確認 URL 正確'), true);
+    else notify('❌ 同步失敗：' + (msg||''), true);
   });
 }
-function testSheet() {
-  const url = document.getElementById('sheet-url').value.trim();
+function testSheet() { testSupabase(); }
+function testSupabase() {
+  const url = document.getElementById('sb-url')?.value.trim() || DB.sbUrl;
+  const key = document.getElementById('sb-key')?.value.trim() || DB.sbKey;
+  if (!url) return notify('請填入 Supabase Project URL', true);
+  if (!key) return notify('請填入 Anon Key', true);
+  notify('🔄 測試連線中...');
+  fetch(`${url.replace(/\/$/,'')}/rest/v1/poker_data?id=eq.main&select=id,updated_at`, {
+    headers: { 'apikey': key, 'Authorization': 'Bearer ' + key }
+  })
+    .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status + '（請確認 URL 和 Key 正確，並已建立資料表）'); return r.json(); })
+    .then(rows => {
+      if (rows && rows.length) notify('✅ 連線成功！資料表已就緒，上次更新：' + (rows[0].updated_at?.slice(0,19).replace('T',' ') || '—'));
+      else notify('⚠️ 連線成功但資料表為空，請先執行 SQL 建立初始資料');
+    })
+    .catch(err => notify('❌ 連線失敗：' + err.message, true));
+}
+function _oldTestSheet() {
+  const url = '';
   if (!url) return notify('請先填入 URL', true);
   notify('測試連線中...');
   fetch(url + '?sheet=test').then(r=>r.json()).then(d=>{ notify('✅ 連線成功！'); }).catch(()=>notify('❌ 連線失敗，請確認 URL 正確', true));
@@ -2157,9 +2181,10 @@ function doImport(e) {
       const data = JSON.parse(ev.target.result);
       if (!confirm('確定要匯入？現有資料將被覆蓋！')) return;
       // 保留目前的 sheetUrl
-      const sheetUrl = DB.sheetUrl || data.sheetUrl || '';
+      const prevSbUrl = DB.sbUrl; const prevSbKey = DB.sbKey;
       DB = data;
-      DB.sheetUrl = sheetUrl;
+      DB.sbUrl = prevSbUrl || data.sbUrl || '';
+      DB.sbKey = prevSbKey || data.sbKey || '';
       saveDB(); renderAll(); notify('資料匯入成功！');
     } catch(err) { notify('匯入失敗：格式錯誤', true); }
   };
@@ -2192,9 +2217,7 @@ function doImportAndSync(e) {
       // 先存 localStorage
       localStorage.setItem('pokerDB', JSON.stringify(DB));
       renderAll();
-      notify('⏳ 資料匯入成功，正在同步到 Google Sheets...');
-
-      // 分批推送（避免單次請求過大）
+      notify('⏳ 資料匯入成功，正在同步到雲端...');
       pushAllToSheet();
     } catch(err) {
       notify('匯入失敗：' + (err.message || '格式錯誤'), true);
@@ -2204,25 +2227,9 @@ function doImportAndSync(e) {
 }
 
 function pushAllToSheet() {
-  if (!DB.sheetUrl) return notify('未設定 Google Sheets URL', true);
-
-  // 計算進度
-  let done = 0;
-  const total = 3; // 總覽、成績明細、PokerData
-  const onDone = () => {
-    done++;
-    if (done >= total) notify('✅ 所有資料已成功同步到 Google Sheets！');
-  };
-  const onFail = (sheet) => notify(`⚠️ 工作表「${sheet}」同步失敗，請確認 Apps Script 已更新並重新部署`, true);
-
-  // 直接呼叫 syncToSheet（它會處理所有工作表）
-  try {
-    syncToSheet();
-    // syncToSheet 使用 no-cors，無法確認成功，等待後通知
-    setTimeout(() => notify('✅ 已推送到 Google Sheets（請至試算表確認）'), 3000);
-  } catch(err) {
-    notify('同步失敗：' + err.message, true);
-  }
+  if (!DB.sbUrl || !DB.sbKey) return notify('請先設定 Supabase URL 和 Key', true);
+  syncToSupabase();
+  setTimeout(() => notify('✅ 已推送到雲端 Supabase！'), 1500);
 }
 
 function mkTable(headers, rows) {
@@ -2396,20 +2403,19 @@ window.onload = () => {
   loadDB();
   document.getElementById('game-date').value = new Date().toISOString().slice(0,10);
   loadConfig(); renderAll();
-  // 若有設定 Sheet URL，自動從雲端拉最新資料
-  if (DB.sheetUrl) {
-    notify('🔄 正在從 Google Sheets 同步資料...');
-    syncFromSheet((ok, msg) => {
-      if (ok) notify('✅ 已從 Google Sheets 載入最新資料！');
+  // 若有設定 Supabase，自動從雲端拉最新資料
+  if (DB.sbUrl && DB.sbKey) {
+    notify('🔄 正在從雲端同步資料...');
+    syncFromSupabase((ok, msg) => {
+      if (ok) notify('✅ 已載入最新資料！');
       else notify('⚠️ 無法同步：' + (msg||''), true);
     });
   }
-  // 每 30 秒自動輪詢一次（靜默，不顯示通知）
+  // 每 30 秒自動輪詢一次（靜默）
   setInterval(() => {
-    if (!DB.sheetUrl) return;
-    syncFromSheet((ok) => {
+    if (!DB.sbUrl || !DB.sbKey) return;
+    syncFromSupabase((ok) => {
       if (ok) {
-        // 只在資料有變化時顯示通知（比較 games 數量）
         const label = document.getElementById('last-update-label');
         if (label) {
           const now = new Date();
