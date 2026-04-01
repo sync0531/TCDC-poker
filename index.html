@@ -821,10 +821,11 @@ select option { background: var(--bg3); }
   <div class="config-section">
     <div class="config-block">
       <h3>☁️ 雲端同步（Supabase）</h3>
-      <div style="font-size:13px;color:var(--text2);margin-bottom:16px;line-height:1.7;">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:12px;line-height:1.7;">
         所有人只要開啟同一個網址就能<strong style="color:var(--white)">自動共用資料</strong>，不需要任何伺服器。<br>
-        每 30 秒自動同步，儲存時即時推送。anon key 可公開分享，安全無虞。
+        每 30 秒自動同步，儲存時即時推送。
       </div>
+      <div id="sb-hardcoded-status" style="padding:10px 14px;background:var(--bg3);border:1px solid var(--border);border-left:3px solid var(--red);font-size:12px;color:var(--text2);margin-bottom:14px;"></div>
 
       <div style="margin-bottom:12px;">
         <label style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1.5px;text-transform:uppercase;display:block;margin-bottom:6px;">Supabase Project URL</label>
@@ -925,6 +926,11 @@ CREATE POLICY "Public write" ON poker_data FOR ALL USING (true);</div>
 </main>
 
 <script>
+// ══ Supabase 設定（在此填入，所有裝置共用）══
+// 填入後上傳到 GitHub，任何人開啟網頁都能自動同步
+const SUPABASE_URL = ''; // 例：https://bjuauzobuavhjowvrxrx.supabase.co
+const SUPABASE_KEY = ''; // 例：sb_publishable_xxxxx...
+
 let DB = { players: [], games: [], config: { minGames: 3, photoRank: 3 }, sbUrl: '', sbKey: '', sheetUrl: '' };
 let lang = 'zh';
 let lbView = 'all';
@@ -936,20 +942,24 @@ function loadDB() {
   if (!DB.players) DB.players = [];
   if (!DB.games) DB.games = [];
   if (!DB.config) DB.config = { minGames: 3, photoRank: 3 };
+  // 常數設定優先（確保任何裝置都能同步）
+  if (SUPABASE_URL) DB.sbUrl = SUPABASE_URL;
+  if (SUPABASE_KEY) DB.sbKey = SUPABASE_KEY;
 }
 function saveDB() {
   localStorage.setItem('pokerDB', JSON.stringify(DB));
   if (DB.sbUrl && DB.sbKey) syncToSupabase();
 }
 function syncToSupabase() {
-  if (!DB.sbUrl || !DB.sbKey) return;
-  const payload = { id: 'main', data: DB, updated_at: new Date().toISOString() };
-  fetch(`${DB.sbUrl}/rest/v1/poker_data?id=eq.main`, {
+  const url = DB.sbUrl || SUPABASE_URL;
+  const key = DB.sbKey || SUPABASE_KEY;
+  if (!url || !key) return;
+  fetch(`${url}/rest/v1/poker_data?id=eq.main`, {
     method: 'PATCH',
     headers: {
       'Content-Type': 'application/json',
-      'apikey': DB.sbKey,
-      'Authorization': 'Bearer ' + DB.sbKey,
+      'apikey': key,
+      'Authorization': 'Bearer ' + key,
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify({ data: DB, updated_at: new Date().toISOString() })
@@ -1339,16 +1349,19 @@ S${g.session||1}`;
 // ── 從 Supabase 同步資料回來 ──
 function syncFromSheet(callback) { syncFromSupabase(callback); } // 相容舊名稱
 function syncFromSupabase(callback) {
-  if (!DB.sbUrl || !DB.sbKey) { if(callback) callback(false, '未設定 Supabase URL/Key'); return; }
-  fetch(`${DB.sbUrl}/rest/v1/poker_data?id=eq.main&select=data,updated_at`, {
-    headers: { 'apikey': DB.sbKey, 'Authorization': 'Bearer ' + DB.sbKey }
+  const url = DB.sbUrl || SUPABASE_URL;
+  const key = DB.sbKey || SUPABASE_KEY;
+  if (!url || !key) { if(callback) callback(false, '未設定 Supabase URL/Key'); return; }
+  fetch(`${url}/rest/v1/poker_data?id=eq.main&select=data,updated_at`, {
+    headers: { 'apikey': key, 'Authorization': 'Bearer ' + key }
   })
     .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
     .then(rows => {
       if (!rows || !rows.length || !rows[0].data) { if(callback) callback(false, '資料庫無資料'); return; }
       const record = rows[0].data;
       if (!record.players) { if(callback) callback(false, '資料格式錯誤'); return; }
-      const prevUrl = DB.sbUrl, prevKey = DB.sbKey;
+      const prevUrl = DB.sbUrl || SUPABASE_URL;
+      const prevKey = DB.sbKey || SUPABASE_KEY;
       DB = { ...record, sbUrl: prevUrl, sbKey: prevKey };
       localStorage.setItem('pokerDB', JSON.stringify(DB));
       renderAll();
@@ -2387,8 +2400,19 @@ function loadConfig() {
   document.getElementById('cfg-photo-rank').value = DB.config?.photoRank || 3;
   const urlEl = document.getElementById('sb-url');
   const keyEl = document.getElementById('sb-key');
-  if (urlEl) urlEl.value = DB.sbUrl || '';
-  if (keyEl) keyEl.value = DB.sbKey || '';
+  if (urlEl) urlEl.value = DB.sbUrl || SUPABASE_URL || '';
+  if (keyEl) keyEl.value = DB.sbKey || SUPABASE_KEY || '';
+  // 顯示內建設定狀態
+  const statusEl = document.getElementById('sb-hardcoded-status');
+  if (statusEl) {
+    if (SUPABASE_URL && SUPABASE_KEY) {
+      statusEl.innerHTML = '✅ <strong style="color:#2ECC71">已內建設定</strong> — 所有裝置開啟網頁都會自動同步，不需要手動設定。<br><span style="color:var(--text3)">URL: ' + SUPABASE_URL + '</span>';
+      statusEl.style.borderLeftColor = '#2ECC71';
+    } else {
+      statusEl.innerHTML = '⚠️ <strong style="color:#FFD700">尚未內建設定</strong> — 請填入下方 URL 和 Key 後，將它們複製到 HTML 程式碼的 <code>SUPABASE_URL</code> 和 <code>SUPABASE_KEY</code> 常數，再上傳到 GitHub，其他裝置才能自動同步。';
+      statusEl.style.borderLeftColor = '#FFD700';
+    }
+  }
 }
 function saveConfig() {
   DB.config = { minGames: parseInt(document.getElementById('cfg-min-games').value)||3, photoRank: parseInt(document.getElementById('cfg-photo-rank').value)||3 };
