@@ -210,6 +210,44 @@ select option { background: var(--bg3); }
 .add-player-btn { background: transparent; border: 1px dashed var(--border2); color: var(--text3); padding: 10px; cursor: pointer; width: 100%; font-family: 'Barlow Condensed', sans-serif; font-size: 12px; letter-spacing: 1.5px; text-transform: uppercase; transition: all 0.2s; }
 .add-player-btn:hover { border-color: var(--red); color: var(--red); }
 
+/* PLAYER PROFILE MODAL */
+.pm-stat-card {
+  padding: 14px 12px;
+  text-align: center;
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+}
+.pm-stat-card:last-child { border-right: none; }
+.pm-stat-card .pm-num {
+  font-family: 'Teko', sans-serif; font-size: 28px; font-weight: 600;
+  color: var(--white); line-height: 1;
+}
+.pm-stat-card .pm-num.positive { color: #2ECC71; }
+.pm-stat-card .pm-num.negative { color: #E74C3C; }
+.pm-stat-card .pm-lbl {
+  font-family: 'Barlow Condensed', sans-serif; font-size: 10px;
+  color: var(--text3); text-transform: uppercase; letter-spacing: 1px;
+  margin-top: 4px;
+}
+.pm-award-badge {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: var(--bg3); border: 1px solid var(--border2);
+  padding: 5px 10px; font-family: 'Barlow Condensed', sans-serif;
+  font-size: 13px; color: var(--text2); letter-spacing: 0.5px;
+}
+.player-name-link {
+  cursor: pointer; color: var(--white);
+  transition: color 0.15s;
+}
+.player-name-link:hover { color: var(--red); text-decoration: underline; }
+@media (max-width: 768px) {
+  #pm-hero { min-height: 220px; }
+  #pm-hero > div { flex-direction: column; align-items: flex-start; gap: 14px; padding: 20px 16px 16px; }
+  #pm-avatar { width: 80px; height: 80px; }
+  #pm-name { font-size: 36px; }
+  .pm-stat-card .pm-num { font-size: 22px; }
+}
+
 /* RANK SLOTS (新版登錄) */
 .rank-slot {
   display: flex;
@@ -671,12 +709,64 @@ select option { background: var(--bg3); }
   </div>
   <div class="form-section">
     <h2 data-zh="👥 管理選手名單" data-en="👥 Manage Players">👥 管理選手名單</h2>
-    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
-      <input type="text" id="new-player-name" placeholder="選手名字" style="flex:1;min-width:150px;">
-      <select id="new-player-gender"><option value="M">男 Male</option><option value="F">女 Female</option></select>
-      <button class="btn" onclick="addPlayer()">新增</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px;">
+      <div class="form-group"><label>名字</label><input type="text" id="new-player-name" placeholder="選手名字"></div>
+      <div class="form-group"><label>性別</label><select id="new-player-gender"><option value="M">♂ 男</option><option value="F">♀ 女</option></select></div>
+      <div class="form-group"><label>暱稱／稱號（選填）</label><input type="text" id="new-player-nickname" placeholder="例：Poker Brat"></div>
+      <div class="form-group"><label>照片</label>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+          <button class="btn outline" style="font-size:12px;padding:6px 12px;" onclick="document.getElementById('new-player-photo-file').click()">📷 上傳照片</button>
+          <input type="file" id="new-player-photo-file" accept="image/*" style="display:none" onchange="previewNewPlayerPhoto(event)">
+        </div>
+        <input type="text" id="new-player-photo-url" placeholder="或貼上照片網址 URL" style="font-size:12px;" oninput="document.getElementById('new-player-photo').value=this.value">
+        <input type="hidden" id="new-player-photo">
+        <div id="new-player-photo-preview" style="margin-top:8px;display:none;">
+          <img id="new-player-photo-img" style="width:60px;height:60px;object-fit:cover;border:2px solid var(--red);">
+        </div>
+      </div>
+    </div>
+    <div style="margin-bottom:16px;">
+      <button class="btn" onclick="addPlayer()">新增選手</button>
     </div>
     <div class="table-wrap" id="player-list-table"></div>
+  </div>
+</div>
+
+<!-- PLAYER PROFILE PAGE -->
+<div class="section" id="sec-profile">
+  <!-- 返回按鈕 -->
+  <div style="margin-bottom:20px;">
+    <button class="btn outline" onclick="goBackFromProfile()" style="font-size:12px;letter-spacing:1px;">← 返回</button>
+  </div>
+
+  <!-- Hero 區 -->
+  <div id="pm-hero" style="position:relative;min-height:320px;background:var(--bg2);border:1px solid var(--border);border-top:3px solid var(--red);overflow:hidden;margin-bottom:0;">
+    <div id="pm-bg" style="position:absolute;inset:0;background-size:cover;background-position:center top;filter:blur(18px) brightness(0.3);transform:scale(1.08);"></div>
+    <div style="position:relative;z-index:1;display:flex;align-items:flex-end;gap:28px;padding:36px 32px 28px;flex-wrap:wrap;">
+      <div id="pm-avatar" style="width:130px;height:130px;border:3px solid var(--red);flex-shrink:0;background:var(--bg3);overflow:hidden;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:52px;color:var(--text3);">👤</span>
+      </div>
+      <div style="flex:1;min-width:0;">
+        <div id="pm-gender-badge" style="margin-bottom:8px;"></div>
+        <div id="pm-name" style="font-family:'Teko',sans-serif;font-size:56px;font-weight:700;color:var(--white);line-height:1;letter-spacing:2px;"></div>
+        <div id="pm-nickname" style="font-family:'Barlow Condensed',sans-serif;font-size:19px;color:var(--text2);letter-spacing:1px;margin-top:6px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 統計卡片 -->
+  <div id="pm-stats" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:0;border:1px solid var(--border);border-top:none;background:var(--bg3);margin-bottom:0;"></div>
+
+  <!-- 獎項徽章 -->
+  <div id="pm-awards-wrap" style="border:1px solid var(--border);border-top:none;background:var(--bg2);padding:20px 24px;display:none;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">🏅 獲得獎項</div>
+    <div id="pm-awards" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+  </div>
+
+  <!-- 比賽歷史 -->
+  <div style="border:1px solid var(--border);border-top:none;background:var(--bg2);padding:20px 24px;">
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:12px;">📋 比賽歷史</div>
+    <div class="table-wrap" id="pm-history"></div>
   </div>
 </div>
 
@@ -1295,14 +1385,37 @@ function setLbView(v) {
   renderLeaderboard();
 }
 
+function previewNewPlayerPhoto(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const data = ev.target.result;
+    document.getElementById('new-player-photo').value = data;
+    document.getElementById('new-player-photo-url').value = '';
+    showPhotoPreview('new-player-photo-preview', 'new-player-photo-img', data);
+  };
+  reader.readAsDataURL(file);
+}
+function showPhotoPreview(wrapId, imgId, src) {
+  const wrap = document.getElementById(wrapId);
+  const img  = document.getElementById(imgId);
+  if (!wrap || !img) return;
+  img.src = src;
+  wrap.style.display = 'block';
+}
 function addPlayer() {
-  const name = document.getElementById('new-player-name').value.trim();
-  const gender = document.getElementById('new-player-gender').value;
+  const name     = document.getElementById('new-player-name').value.trim();
+  const gender   = document.getElementById('new-player-gender').value;
+  const nickname = document.getElementById('new-player-nickname')?.value.trim() || '';
+  const photo    = document.getElementById('new-player-photo')?.value || '';
   if (!name) return notify('請輸入選手名字', true);
   if (DB.players.find(p => p.name === name)) return notify('選手已存在', true);
-  DB.players.push({ id: Date.now().toString(), name, gender });
+  DB.players.push({ id: Date.now().toString(), name, gender, nickname, photo });
   saveDB();
   document.getElementById('new-player-name').value = '';
+  if (document.getElementById('new-player-nickname')) document.getElementById('new-player-nickname').value = '';
+  if (document.getElementById('new-player-photo')) document.getElementById('new-player-photo').value = '';
+  if (document.getElementById('new-player-photo-name')) document.getElementById('new-player-photo-name').textContent = '未選擇';
   renderPlayerList(); updatePlayerDropdowns();
   notify('選手已新增：' + name);
 }
@@ -1314,49 +1427,206 @@ function removePlayer(id) {
 function renderPlayerList() {
   const cont = document.getElementById('player-list-table');
   if (!DB.players.length) { cont.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:13px">尚無選手</div>'; return; }
-  cont.innerHTML = '<table><thead><tr><th>名字</th><th>性別</th><th>操作</th></tr></thead><tbody>' +
-    DB.players.map(p => `<tr id="plist-${p.id}">
-      <td id="pname-${p.id}" class="player-name">${p.name}</td>
-      <td id="pgender-${p.id}"><span class="badge ${p.gender==='F'?'female':'male'}">${p.gender==='F'?'♀ 女':'♂ 男'}</span></td>
-      <td style="display:flex;gap:6px;flex-wrap:wrap;">
-        <button class="btn secondary" onclick="editPlayer('${p.id}')" style="padding:4px 10px;font-size:12px">✏️ 編輯</button>
-        <button class="btn danger" onclick="removePlayer('${p.id}')" style="padding:4px 10px;font-size:12px">刪除</button>
-      </td>
-    </tr>`).join('') + '</tbody></table>';
+  cont.innerHTML = '<table><thead><tr><th>照片</th><th>名字</th><th>暱稱</th><th>性別</th><th>操作</th></tr></thead><tbody>' +
+    DB.players.map(p => {
+      const avatarHtml = p.photo
+        ? `<img src="${p.photo}" style="width:36px;height:36px;object-fit:cover;border:1px solid var(--border);">`
+        : `<div style="width:36px;height:36px;background:var(--bg3);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;">👤</div>`;
+      return `<tr id="plist-${p.id}">
+        <td style="padding:6px 12px;">${avatarHtml}</td>
+        <td id="pname-${p.id}" class="player-name" style="cursor:pointer;" onclick="openPlayerProfile('${p.id}')">${p.name}</td>
+        <td id="pnick-${p.id}" style="color:var(--text3);font-size:12px;">${p.nickname||'—'}</td>
+        <td id="pgender-${p.id}"><span class="badge ${p.gender==='F'?'female':'male'}">${p.gender==='F'?'♀ 女':'♂ 男'}</span></td>
+        <td style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn outline" onclick="openPlayerProfile('${p.id}')" style="padding:4px 10px;font-size:12px">👤 個人頁</button>
+          <button class="btn secondary" onclick="editPlayer('${p.id}')" style="padding:4px 10px;font-size:12px">✏️ 編輯</button>
+          <button class="btn danger" onclick="removePlayer('${p.id}')" style="padding:4px 10px;font-size:12px">刪除</button>
+        </td>
+      </tr>`;
+    }).join('') + '</tbody></table>';
 }
 
 function editPlayer(id) {
   const p = DB.players.find(x => x.id === id);
   if (!p) return;
-  const nameCell = document.getElementById('pname-' + id);
-  const genderCell = document.getElementById('pgender-' + id);
   const row = document.getElementById('plist-' + id);
-  // Replace cells with inputs
-  nameCell.innerHTML = `<input type="text" id="edit-name-${id}" value="${p.name}" style="width:120px;padding:5px 8px;font-size:13px;">`;
-  genderCell.innerHTML = `<select id="edit-gender-${id}" style="padding:5px 8px;font-size:13px;">
+  // name
+  document.getElementById('pname-' + id).innerHTML = `<input type="text" id="edit-name-${id}" value="${p.name}" style="width:100px;padding:5px 8px;font-size:13px;">`;
+  // nickname
+  const nickCell = document.getElementById('pnick-' + id);
+  if (nickCell) nickCell.innerHTML = `<input type="text" id="edit-nick-${id}" value="${p.nickname||''}" placeholder="暱稱" style="width:90px;padding:5px 8px;font-size:12px;">`;
+  // gender
+  document.getElementById('pgender-' + id).innerHTML = `<select id="edit-gender-${id}" style="padding:5px 8px;font-size:13px;">
     <option value="M" ${p.gender==='M'?'selected':''}>♂ 男</option>
     <option value="F" ${p.gender==='F'?'selected':''}>♀ 女</option>
   </select>`;
-  // Replace buttons
+  // buttons + photo upload
   row.querySelector('td:last-child').innerHTML = `
+    <button class="btn outline" onclick="document.getElementById('edit-photo-${id}').click()" style="padding:4px 10px;font-size:12px">📷 換照片</button>
+    <input type="file" id="edit-photo-${id}" accept="image/*" style="display:none" onchange="applyEditPhoto('${id}',this)">
+    <input type="text" id="edit-photo-url-${id}" placeholder="或貼上圖片 URL" style="padding:4px 8px;font-size:12px;flex:1;min-width:140px;" oninput="applyEditPhotoUrl('${id}',this.value)">
     <button class="btn" onclick="savePlayerEdit('${id}')" style="padding:4px 10px;font-size:12px">✅ 儲存</button>
     <button class="btn outline" onclick="renderPlayerList()" style="padding:4px 10px;font-size:12px">取消</button>
   `;
   document.getElementById('edit-name-' + id).focus();
 }
+function applyEditPhoto(id, input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    document.getElementById('plist-' + id).dataset.pendingPhoto = ev.target.result;
+    const urlInput = document.getElementById('edit-photo-url-' + id);
+    if (urlInput) urlInput.value = '';
+    notify('照片已選取，按儲存生效');
+  };
+  reader.readAsDataURL(file);
+}
+function applyEditPhotoUrl(id, url) {
+  if (!url.trim()) return;
+  document.getElementById('plist-' + id).dataset.pendingPhoto = url.trim();
+}
 
 function savePlayerEdit(id) {
-  const newName = document.getElementById('edit-name-' + id).value.trim();
+  const newName   = document.getElementById('edit-name-' + id).value.trim();
   const newGender = document.getElementById('edit-gender-' + id).value;
+  const newNick   = document.getElementById('edit-nick-' + id)?.value.trim() || '';
   if (!newName) return notify('名字不能為空', true);
   const dup = DB.players.find(p => p.name === newName && p.id !== id);
   if (dup) return notify('選手名字已存在', true);
   const p = DB.players.find(x => x.id === id);
-  p.name = newName;
-  p.gender = newGender;
+  p.name     = newName;
+  p.gender   = newGender;
+  p.nickname = newNick;
+  const row  = document.getElementById('plist-' + id);
+  const pendingPhoto = row?.dataset?.pendingPhoto;
+  if (pendingPhoto) p.photo = pendingPhoto;
   saveDB(); renderPlayerList(); updatePlayerDropdowns();
   notify('✅ 選手資料已更新：' + newName);
 }
+
+// ═══════════════════════════════════════════════
+// 選手個人頁 Modal
+// ═══════════════════════════════════════════════
+function openPlayerProfile(playerId) {
+  const p = DB.players.find(x => x.id === playerId);
+  if (!p) return;
+
+  // 計算統計（使用全部賽季）
+  const stats = computeStats('all');
+  const s = stats[playerId];
+  if (!s) return;
+
+  // ── Hero ──
+  const bgEl   = document.getElementById('pm-bg');
+  const avatarEl = document.getElementById('pm-avatar');
+  if (p.photo) {
+    bgEl.style.backgroundImage = `url("${p.photo}")`;
+    avatarEl.innerHTML = `<img src="${p.photo}" style="width:100%;height:100%;object-fit:cover;">`;
+  } else {
+    bgEl.style.backgroundImage = '';
+    bgEl.style.background = 'var(--bg3)';
+    avatarEl.innerHTML = `<span style="font-size:48px;color:var(--text3);">👤</span>`;
+  }
+  document.getElementById('pm-gender-badge').innerHTML =
+    `<span class="badge ${p.gender==='F'?'female':'male'}" style="font-size:13px;padding:4px 10px;">${p.gender==='F'?'♀ 女':'♂ 男'}</span>`;
+  document.getElementById('pm-name').textContent = p.name;
+  document.getElementById('pm-nickname').textContent = p.nickname || '';
+
+  // ── 統計卡片 ──
+  const net = s.totalPrize - s.totalBuyIn;
+  const roi = s.totalBuyIn > 0 ? (net / s.totalBuyIn * 100) : 0;
+  const statsData = [
+    { lbl: 'MVP 積分',   val: s.mvpScore?.toFixed(1) || '—', cls: '' },
+    { lbl: '場次',       val: s.games,    cls: '' },
+    { lbl: '🥇 冠軍',   val: s.first,    cls: '' },
+    { lbl: '🥈 亞軍',   val: s.second,   cls: '' },
+    { lbl: '🥉 季軍',   val: s.third,    cls: '' },
+    { lbl: '正泡',       val: s.fourth||0, cls: '' },
+    { lbl: '總買入',     val: '$'+s.totalBuyIn.toLocaleString(), cls: '' },
+    { lbl: '總獎金',     val: '$'+s.totalPrize.toLocaleString(), cls: '' },
+    { lbl: '淨利',       val: (net>=0?'+':'')+net.toLocaleString(), cls: net>0?'positive':net<0?'negative':'' },
+    { lbl: 'ROI',        val: (roi>=0?'+':'')+roi.toFixed(1)+'%',   cls: roi>0?'positive':roi<0?'negative':'' },
+    { lbl: '參賽率',     val: (s.recentRate*100).toFixed(0)+'%', cls: '' },
+    { lbl: '名次積分',   val: s.rankPts,  cls: '' },
+  ];
+  document.getElementById('pm-stats').innerHTML = statsData.map(d =>
+    `<div class="pm-stat-card"><div class="pm-num ${d.cls}">${d.val}</div><div class="pm-lbl">${d.lbl}</div></div>`
+  ).join('');
+
+  // ── 獎項徽章 ──
+  const allStats = Object.values(computeStats('all')).filter(x => x.games > 0);
+  const minGames = DB.config?.minGames || 3;
+  const earnedAwards = [];
+  AWARD_DEFS.forEach(def => {
+    if (def.special) return;
+    const sorted = def.fn([...allStats]);
+    if (!sorted.length) return;
+    const qualified = !def.req || sorted[0].games >= minGames;
+    if (!qualified) return;
+    const topVal = def.fmt(sorted[0]);
+    const winners = sorted.filter(x => def.fmt(x) === topVal);
+    if (winners.some(x => x.id === playerId)) {
+      earnedAwards.push({ icon: def.icon, name: lang==='zh'?def.zh:def.en, val: topVal });
+    }
+  });
+  const awardsWrap = document.getElementById('pm-awards-wrap');
+  if (earnedAwards.length) {
+    awardsWrap.style.display = 'block';
+    document.getElementById('pm-awards').innerHTML = earnedAwards.map(a =>
+      `<div class="pm-award-badge">${a.icon} ${a.name} <span style="color:var(--red);margin-left:4px;">${a.val}</span></div>`
+    ).join('');
+  } else {
+    awardsWrap.style.display = 'none';
+  }
+
+  // ── 比賽歷史 ──
+  const pGames = [...DB.games]
+    .filter(g => g.results.some(r => r.playerId === playerId))
+    .sort((a,b) => b.date.localeCompare(a.date));
+
+  if (pGames.length) {
+    document.getElementById('pm-history').innerHTML =
+      `<table><thead><tr><th>日期</th><th>場次</th><th>名次</th><th>買入份數</th><th>獎金</th><th>淨利</th></tr></thead><tbody>` +
+      pGames.map(g => {
+        const r = g.results.find(x => x.playerId === playerId);
+        if (!r) return '';
+        const totalIn = r.buyIn * (1 + r.rebuys);
+        const net2    = r.prize - totalIn;
+        const rkClass = r.rank===1?'rank gold':r.rank===2?'rank silver':r.rank===3?'rank bronze':'rank';
+        return `<tr>
+          <td>${g.date}</td>
+          <td><span class="session-badge">S${g.session||1}</span> ${g.season}</td>
+          <td><span class="${rkClass}">${r.rank}</span></td>
+          <td>×${r.rebuys+1}</td>
+          <td>${r.prize>0?'$'+r.prize.toLocaleString():'—'}</td>
+          <td>${colorNum(net2)}</td>
+        </tr>`;
+      }).join('') + '</tbody></table>';
+  } else {
+    document.getElementById('pm-history').innerHTML = '<div style="color:var(--text3);padding:12px 0;font-size:13px;">尚無比賽紀錄</div>';
+  }
+
+  // 切換到個人頁 section
+  _prevSection = document.querySelector('.section.active')?.id || 'sec-dashboard';
+  _prevTab     = document.querySelector('.tab.active');
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('sec-profile').classList.add('active');
+  window.scrollTo(0, 0);
+}
+
+let _prevSection = 'sec-dashboard';
+let _prevTab     = null;
+
+function goBackFromProfile() {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(_prevSection).classList.add('active');
+  if (_prevTab) _prevTab.classList.add('active');
+  else document.querySelector('.tab')?.classList.add('active');
+}
+
+// 保留舊名稱相容性
+function closePlayerModal(e) { goBackFromProfile(); }
 
 let playerRows = [];
 function addPlayerRow() {} // compatibility stub
@@ -1574,11 +1844,11 @@ function renderDashboard() {
   const all = [...arr].sort((a,b) => b.mvpScore - a.mvpScore);
   const males = all.filter(s => s.gender === 'M');
   const females = all.filter(s => s.gender === 'F');
-  document.getElementById('mvp-overall').textContent = all[0]?.name || '—';
+  document.getElementById('mvp-overall').innerHTML = all[0] ? `<span class='player-name-link' onclick="openPlayerProfile('${all[0].id}')">${all[0].name}</span>` : '—';
   document.getElementById('mvp-overall-pts').textContent = all[0] ? `MVP ${all[0].mvpScore.toFixed(1)} | 積分 ${all[0].rankPts} | 參賽率 ${(all[0].recentRate*100).toFixed(0)}%` : '';
-  document.getElementById('mvp-female').textContent = females[0]?.name || '—';
+  document.getElementById('mvp-female').innerHTML = females[0] ? `<span class='player-name-link' onclick="openPlayerProfile('${females[0].id}')">${females[0].name}</span>` : '—';
   document.getElementById('mvp-female-pts').textContent = females[0] ? `MVP ${females[0].mvpScore.toFixed(1)} | 積分 ${females[0].rankPts} | 參賽率 ${(females[0].recentRate*100).toFixed(0)}%` : '';
-  document.getElementById('mvp-male').textContent = males[0]?.name || '—';
+  document.getElementById('mvp-male').innerHTML = males[0] ? `<span class='player-name-link' onclick="openPlayerProfile('${males[0].id}')">${males[0].name}</span>` : '—';
   document.getElementById('mvp-male-pts').textContent = males[0] ? `MVP ${males[0].mvpScore.toFixed(1)} | 積分 ${males[0].rankPts} | 參賽率 ${(males[0].recentRate*100).toFixed(0)}%` : '';
   const games = DB.games.filter(g => g.season === season);
   const totalPrize = games.reduce((s,g) => s + g.results.reduce((a,r)=>a+r.prize,0),0);
@@ -1784,7 +2054,7 @@ function renderLeaderboard() {
   // 欄位定義：{ key, label, render, title }
   const cols = [
     { key:'_rank',       label:'排名',          title:'依MVP積分排名', render:(s,i)=>{const rk=i+1;const rc=rk===1?'rank gold':rk===2?'rank silver':rk===3?'rank bronze':'rank';return `<span class="${rc}">${rk}</span>`;} },
-    { key:'name',        label:'選手',           title:'選手名稱',      render:s=>`<span class="player-name">${s.name}</span>` },
+    { key:'name',        label:'選手',           title:'選手名稱',      render:s=>`<span class="player-name player-name-link" onclick="openPlayerProfile('${s.id}')">${s.name}</span>` },
     { key:'gender',      label:'性別',           title:'性別',          render:s=>`<span class="badge ${s.gender==='F'?'female':'male'}">${s.gender==='F'?'♀':'♂'}</span>` },
     { key:'mvpScore',    label:'MVP積分',        title:'MVP綜合積分',    render:s=>`<span class="score">${s.mvpScore.toFixed(1)}</span>` },
     { key:'rankPts',     label:'名次積分(A)',    title:'累計名次積分',   render:s=>s.rankPts },
@@ -1901,7 +2171,8 @@ function renderAwards() {
     const topVal = def.fmt(winner);
     const tied = sorted.filter(s => def.fmt(s) === topVal);
     const names = tied.map(s => s.name).join(' / ');
-    return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3><div class="holder">${names}</div><div class="detail">${topVal}</div><div class="desc">${def.desc}</div></div></div>`;
+    const linkedNames = tied.map(s=>`<span class="player-name-link" onclick="openPlayerProfile('${s.id}')">${s.name}</span>`).join(' / ');
+    return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3><div class="holder">${linkedNames}</div><div class="detail">${topVal}</div><div class="desc">${def.desc}</div></div></div>`;
   }).join('');
 }
 
