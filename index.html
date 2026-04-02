@@ -154,10 +154,21 @@ tbody tr:last-child td { border-bottom: none; }
 .mvp-card .title { font-family: 'Barlow Condensed', sans-serif; font-size: 18px; color: var(--text3); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 12px; }
 .mvp-card .name { font-family: 'Teko', sans-serif; font-size: 51px; color: var(--white); font-weight: 600; line-height: 1; }
 .mvp-card .pts { font-family: 'Barlow Condensed', sans-serif; font-size: 14px; color: var(--text3); margin-top: 8px; letter-spacing: 0.5px; line-height: 1.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mvp-avatar-wrap { display: flex; justify-content: center; margin-bottom: 14px; }
+.mvp-avatar {
+  width: 90px; height: 90px;
+  border: 3px solid var(--red);
+  background: var(--bg3);
+  overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; color: var(--text3);
+  flex-shrink: 0;
+  background-size: cover; background-position: center top;
+}
 
 /* AWARDS */
 .awards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px,1fr)); gap: 12px; margin-bottom: 28px; }
-.award-card { background: var(--bg2); border: 1px solid var(--border); padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; transition: border-color 0.2s; }
+.award-card { background: var(--bg2); border: 1px solid var(--border); padding: 16px 18px; display: flex; gap: 14px; align-items: flex-start; transition: border-color 0.2s; flex-wrap: wrap; }
 .award-card:hover { border-color: var(--border2); }
 .award-icon { font-size: 26px; flex-shrink: 0; width: 40px; text-align: center; }
 .award-info h3 { font-family: 'Barlow Condensed', sans-serif; font-size: 21px; font-weight: 700; margin-bottom: 4px; letter-spacing: 1px; text-transform: uppercase; color: var(--text2); }
@@ -431,6 +442,7 @@ select option { background: var(--bg3); }
   .mvp-card .title { font-size: 13px; }
   .mvp-card .name { font-size: 36px; }
   .mvp-card .pts { font-size: 11px; white-space: normal; }
+  .mvp-avatar { width: 64px; height: 64px; font-size: 26px; }
   .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
   .stat-card { padding: 12px; }
   .stat-card .num { font-size: 30px; }
@@ -574,18 +586,21 @@ select option { background: var(--bg3); }
     <div class="mvp-card">
       <div class="crown">🏆</div>
       <div class="title" data-zh="總MVP" data-en="Overall MVP">總MVP</div>
+      <div class="mvp-avatar-wrap"><div class="mvp-avatar" id="mvp-overall-avatar"></div></div>
       <div class="name" id="mvp-overall">—</div>
       <div class="pts" id="mvp-overall-pts"></div>
     </div>
     <div class="mvp-card">
       <div class="crown">👸</div>
       <div class="title" data-zh="女子MVP" data-en="Female MVP">女子MVP</div>
+      <div class="mvp-avatar-wrap"><div class="mvp-avatar" id="mvp-female-avatar"></div></div>
       <div class="name" id="mvp-female">—</div>
       <div class="pts" id="mvp-female-pts"></div>
     </div>
     <div class="mvp-card">
       <div class="crown">👑</div>
       <div class="title" data-zh="男子MVP" data-en="Male MVP">男子MVP</div>
+      <div class="mvp-avatar-wrap"><div class="mvp-avatar" id="mvp-male-avatar"></div></div>
       <div class="name" id="mvp-male">—</div>
       <div class="pts" id="mvp-male-pts"></div>
     </div>
@@ -1582,28 +1597,39 @@ function openPlayerProfile(playerId) {
     `<div class="pm-stat-card"><div class="pm-num ${d.cls}">${d.val}</div><div class="pm-lbl">${d.lbl}</div></div>`
   ).join('');
 
-  // ── 獎項徽章 ──
-  const allStats = Object.values(computeStats('all')).filter(x => x.games > 0);
+  // ── 獎項徽章：按年度逐季計算 ──
   const minGames = DB.config?.minGames || 3;
-  const earnedAwards = [];
-  AWARD_DEFS.forEach(def => {
-    if (def.special) return;
-    const sorted = def.fn([...allStats]);
-    if (!sorted.length) return;
-    const qualified = !def.req || sorted[0].games >= minGames;
-    if (!qualified) return;
-    const topVal = def.fmt(sorted[0]);
-    const winners = sorted.filter(x => def.fmt(x) === topVal);
-    if (winners.some(x => x.id === playerId)) {
-      earnedAwards.push({ icon: def.icon, name: lang==='zh'?def.zh:def.en, val: topVal });
-    }
+  const seasons = [...new Set(DB.games.map(g => g.season))].sort();
+  const awardsBySeason = []; // [{season, awards:[]}]
+
+  seasons.forEach(season => {
+    const seasonStats = Object.values(computeStats(season)).filter(x => x.games > 0);
+    const earned = [];
+    AWARD_DEFS.forEach(def => {
+      if (def.special) return;
+      const sorted = def.fn([...seasonStats]);
+      if (!sorted.length) return;
+      const qualified = !def.req || sorted[0].games >= minGames;
+      if (!qualified) return;
+      const topVal = def.fmt(sorted[0]);
+      const winners = sorted.filter(x => def.fmt(x) === topVal);
+      if (winners.some(x => x.id === playerId)) {
+        earned.push({ icon: def.icon, name: lang==='zh'?def.zh:def.en, val: topVal });
+      }
+    });
+    if (earned.length) awardsBySeason.push({ season, awards: earned });
   });
+
   const awardsWrap = document.getElementById('pm-awards-wrap');
-  if (earnedAwards.length) {
+  if (awardsBySeason.length) {
     awardsWrap.style.display = 'block';
-    document.getElementById('pm-awards').innerHTML = earnedAwards.map(a =>
-      `<div class="pm-award-badge">${a.icon} ${a.name} <span style="color:var(--red);margin-left:4px;">${a.val}</span></div>`
-    ).join('');
+    document.getElementById('pm-awards').innerHTML = awardsBySeason.map(({ season, awards }) => `
+      <div style="width:100%;margin-bottom:12px;">
+        <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;border-bottom:1px solid var(--border);padding-bottom:4px;">${season}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ${awards.map(a => `<div class="pm-award-badge" title="${season}年 ${a.name}">${a.icon} <span style="color:var(--text3);font-size:11px;margin-right:3px;">${season}</span>${a.name} <span style="color:var(--red);margin-left:4px;">${a.val}</span></div>`).join('')}
+        </div>
+      </div>`).join('');
   } else {
     awardsWrap.style.display = 'none';
   }
@@ -1873,12 +1899,31 @@ function renderDashboard() {
   const all = [...arr].sort((a,b) => b.mvpScore - a.mvpScore);
   const males = all.filter(s => s.gender === 'M');
   const females = all.filter(s => s.gender === 'F');
-  document.getElementById('mvp-overall').innerHTML = all[0] ? `<span class='player-name-link' onclick="openPlayerProfile('${all[0].id}')">${all[0].name}</span>` : '—';
-  document.getElementById('mvp-overall-pts').textContent = all[0] ? `MVP ${all[0].mvpScore.toFixed(1)} | 積分 ${all[0].rankPts} | 參賽率 ${(all[0].recentRate*100).toFixed(0)}%` : '';
-  document.getElementById('mvp-female').innerHTML = females[0] ? `<span class='player-name-link' onclick="openPlayerProfile('${females[0].id}')">${females[0].name}</span>` : '—';
-  document.getElementById('mvp-female-pts').textContent = females[0] ? `MVP ${females[0].mvpScore.toFixed(1)} | 積分 ${females[0].rankPts} | 參賽率 ${(females[0].recentRate*100).toFixed(0)}%` : '';
-  document.getElementById('mvp-male').innerHTML = males[0] ? `<span class='player-name-link' onclick="openPlayerProfile('${males[0].id}')">${males[0].name}</span>` : '—';
-  document.getElementById('mvp-male-pts').textContent = males[0] ? `MVP ${males[0].mvpScore.toFixed(1)} | 積分 ${males[0].rankPts} | 參賽率 ${(males[0].recentRate*100).toFixed(0)}%` : '';
+  // helper: 更新 MVP 卡片（含頭像）
+  const setMvpCard = (nameId, ptsId, avatarId, player) => {
+    const avatarEl = document.getElementById(avatarId);
+    if (player) {
+      const p = DB.players.find(x => x.id === player.id);
+      if (avatarEl) {
+        if (p?.photo) {
+          avatarEl.style.backgroundImage = `url("${p.photo}")`;
+          avatarEl.textContent = '';
+        } else {
+          avatarEl.style.backgroundImage = '';
+          avatarEl.textContent = '👤';
+        }
+      }
+      document.getElementById(nameId).innerHTML = `<span class='player-name-link' onclick="openPlayerProfile('${player.id}')">${player.name}</span>`;
+      document.getElementById(ptsId).textContent = `MVP ${player.mvpScore.toFixed(1)} | 積分 ${player.rankPts} | 參賽率 ${(player.recentRate*100).toFixed(0)}%`;
+    } else {
+      if (avatarEl) { avatarEl.style.backgroundImage = ''; avatarEl.textContent = '👤'; }
+      document.getElementById(nameId).innerHTML = '—';
+      document.getElementById(ptsId).textContent = '';
+    }
+  };
+  setMvpCard('mvp-overall', 'mvp-overall-pts', 'mvp-overall-avatar', all[0] || null);
+  setMvpCard('mvp-female',  'mvp-female-pts',  'mvp-female-avatar',  females[0] || null);
+  setMvpCard('mvp-male',    'mvp-male-pts',    'mvp-male-avatar',    males[0] || null);
   const games = DB.games.filter(g => g.season === season);
   const totalPrize = games.reduce((s,g) => s + g.results.reduce((a,r)=>a+r.prize,0),0);
   document.getElementById('dash-stats').innerHTML = `
@@ -2201,7 +2246,33 @@ function renderAwards() {
     const tied = sorted.filter(s => def.fmt(s) === topVal);
     const names = tied.map(s => s.name).join(' / ');
     const linkedNames = tied.map(s=>`<span class="player-name-link" onclick="openPlayerProfile('${s.id}')">${s.name}</span>`).join(' / ');
-    return `<div class="award-card"><div class="award-icon">${def.icon}</div><div class="award-info"><h3>${lang==='zh'?def.zh:def.en}</h3><div class="holder">${linkedNames}</div><div class="detail">${topVal}</div><div class="desc">${def.desc}</div></div></div>`;
+
+    // 得獎者照片（大頭照）
+    const avatarsHtml = tied.map(s => {
+      const p = DB.players.find(x => x.id === s.id);
+      const hasPhoto = !!p?.photo;
+      const photoStyle = hasPhoto
+        ? `background-image:url('${p.photo}');background-size:cover;background-position:center top;`
+        : 'font-size:32px;';
+      return `<div onclick="openPlayerProfile('${s.id}')" title="${s.name}" style="cursor:pointer;width:72px;height:72px;border:2px solid ${hasPhoto?'var(--red)':'var(--border2)'};background:var(--bg3);display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;${photoStyle}">${hasPhoto?'':'👤'}</div>`;
+    }).join('');
+
+    return `<div class="award-card" style="flex-direction:column;gap:10px;">
+      <div style="display:flex;gap:12px;align-items:center;">
+        <div class="award-icon" style="margin:0;font-size:32px;width:44px;">${def.icon}</div>
+        <div>
+          <h3 style="margin-bottom:4px;">${lang==='zh'?def.zh:def.en}</h3>
+          <div class="desc" style="margin:0;">${def.desc}</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">${avatarsHtml}</div>
+        <div>
+          <div class="holder">${linkedNames}</div>
+          <div class="detail">${topVal}</div>
+        </div>
+      </div>
+    </div>`;
   }).join('');
 }
 
