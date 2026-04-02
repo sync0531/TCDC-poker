@@ -889,6 +889,11 @@ CREATE POLICY "Public write" ON poker_data FOR ALL USING (true);</div>
           <h4>儲存並測試</h4>
           <p>點「儲存」→「測試」確認連線成功 → 把 URL 和 anon key 分享給其他人貼入設定頁即可</p>
         </div></div>
+        <div class="setup-step"><div class="content">
+          <h4>建立照片儲存空間（選手照片用）</h4>
+          <p>左側 → <strong>Storage</strong> → New bucket → Name 填「<strong>player-photos</strong>」→ 勾選 <strong>Public bucket</strong> → Save<br>
+          建立後點 bucket → Policies → New policy → 選「Full access」→ Save</p>
+        </div></div>
       </div>
       <div id="sync-status" style="display:none;margin-top:12px;padding:10px 14px;background:var(--bg3);border:1px solid var(--border);font-size:13px;"></div>
     </div>
@@ -1429,17 +1434,21 @@ function setLbView(v) {
   renderLeaderboard();
 }
 
-function previewNewPlayerPhoto(e) {
-  const file = e.target.files[0]; if (!file) return;
-  const reader = new FileReader();
-  reader.onload = ev => {
-    const data = ev.target.result;
-    document.getElementById('new-player-photo').value = data;
-    document.getElementById('new-player-photo-url').value = '';
-    showPhotoPreview('new-player-photo-preview', 'new-player-photo-img', data);
-  };
-  reader.readAsDataURL(file);
+async function uploadPhotoToSupabase(file, playerId) {
+  const url = DB.sbUrl || SUPABASE_URL;
+  const key = DB.sbKey || SUPABASE_KEY;
+  if (!url || !key) return null;
+  const ext  = file.name.split('.').pop();
+  const path = `players/${playerId || Date.now()}.${ext}`;
+  const res  = await fetch(`${url}/storage/v1/object/player-photos/${path}`, {
+    method: 'POST',
+    headers: { 'apikey': key, 'Authorization': 'Bearer ' + key, 'Content-Type': file.type, 'x-upsert': 'true' },
+    body: file
+  });
+  if (!res.ok) return null;
+  return `${url}/storage/v1/object/public/player-photos/${path}`;
 }
+
 function showPhotoPreview(wrapId, imgId, src) {
   const wrap = document.getElementById(wrapId);
   const img  = document.getElementById(imgId);
@@ -1447,21 +1456,53 @@ function showPhotoPreview(wrapId, imgId, src) {
   img.src = src;
   wrap.style.display = 'block';
 }
-function addPlayer() {
+
+function previewNewPlayerPhoto(e) {
+  const file = e.target.files[0]; if (!file) return;
+  // 先本地預覽
+  const reader = new FileReader();
+  reader.onload = ev => {
+    showPhotoPreview('new-player-photo-preview', 'new-player-photo-img', ev.target.result);
+    document.getElementById('new-player-photo-url').value = '';
+  };
+  reader.readAsDataURL(file);
+  // 存 file 供 addPlayer 使用
+  document.getElementById('new-player-photo-file')._pendingFile = file;
+}
+async function addPlayer() {
   const name     = document.getElementById('new-player-name').value.trim();
   const gender   = document.getElementById('new-player-gender').value;
   const nickname = document.getElementById('new-player-nickname')?.value.trim() || '';
-  const photo    = document.getElementById('new-player-photo')?.value || '';
+  const photoUrl = document.getElementById('new-player-photo-url')?.value.trim() || '';
   if (!name) return notify('請輸入選手名字', true);
   if (DB.players.find(p => p.name === name)) return notify('選手已存在', true);
-  DB.players.push({ id: Date.now().toString(), name, gender, nickname, photo });
+  const newId = Date.now().toString();
+  let photo = photoUrl;
+
+  // 若有選擇檔案，上傳到 Supabase Storage
+  const fileInput = document.getElementById('new-player-photo-file');
+  const pendingFile = fileInput?._pendingFile;
+  if (pendingFile && !photoUrl) {
+    notify('⏳ 正在上傳照片...');
+    const uploadedUrl = await uploadPhotoToSupabase(pendingFile, newId);
+    if (uploadedUrl) {
+      photo = uploadedUrl;
+    } else {
+      notify('⚠️ 照片上傳失敗，選手仍會新增但無照片', true);
+    }
+    if (fileInput) { fileInput._pendingFile = null; fileInput.value = ''; }
+  }
+
+  DB.players.push({ id: newId, name, gender, nickname, photo });
   saveDB();
+  // 清空表單
   document.getElementById('new-player-name').value = '';
   if (document.getElementById('new-player-nickname')) document.getElementById('new-player-nickname').value = '';
-  if (document.getElementById('new-player-photo')) document.getElementById('new-player-photo').value = '';
-  if (document.getElementById('new-player-photo-name')) document.getElementById('new-player-photo-name').textContent = '未選擇';
+  if (document.getElementById('new-player-photo-url')) document.getElementById('new-player-photo-url').value = '';
+  const prev = document.getElementById('new-player-photo-preview');
+  if (prev) prev.style.display = 'none';
   renderPlayerList(); updatePlayerDropdowns();
-  notify('選手已新增：' + name);
+  notify('✅ 選手已新增：' + name);
 }
 function removePlayer(id) {
   if (!confirm('確定刪除此選手？')) return;
@@ -1516,34 +1557,55 @@ function editPlayer(id) {
 }
 function applyEditPhoto(id, input) {
   const file = input.files[0]; if (!file) return;
+  // 存 file 供 savePlayerEdit 使用
+  const row = document.getElementById('plist-' + id);
+  row._pendingFile = file;
+  row.dataset.pendingPhoto = ''; // 清掉舊的
+  // 本地預覽
   const reader = new FileReader();
   reader.onload = ev => {
-    document.getElementById('plist-' + id).dataset.pendingPhoto = ev.target.result;
     const urlInput = document.getElementById('edit-photo-url-' + id);
     if (urlInput) urlInput.value = '';
-    notify('照片已選取，按儲存生效');
+    notify('照片已選取，按儲存後上傳');
   };
   reader.readAsDataURL(file);
 }
 function applyEditPhotoUrl(id, url) {
   if (!url.trim()) return;
-  document.getElementById('plist-' + id).dataset.pendingPhoto = url.trim();
+  const row = document.getElementById('plist-' + id);
+  row.dataset.pendingPhoto = url.trim();
+  row._pendingFile = null;
 }
 
-function savePlayerEdit(id) {
+async function savePlayerEdit(id) {
   const newName   = document.getElementById('edit-name-' + id).value.trim();
   const newGender = document.getElementById('edit-gender-' + id).value;
   const newNick   = document.getElementById('edit-nick-' + id)?.value.trim() || '';
   if (!newName) return notify('名字不能為空', true);
   const dup = DB.players.find(p => p.name === newName && p.id !== id);
   if (dup) return notify('選手名字已存在', true);
-  const p = DB.players.find(x => x.id === id);
-  p.name     = newName;
-  p.gender   = newGender;
+  const p   = DB.players.find(x => x.id === id);
+  p.name    = newName;
+  p.gender  = newGender;
   p.nickname = newNick;
-  const row  = document.getElementById('plist-' + id);
-  const pendingPhoto = row?.dataset?.pendingPhoto;
-  if (pendingPhoto) p.photo = pendingPhoto;
+  const row = document.getElementById('plist-' + id);
+
+  // 處理照片
+  const pendingFile = row?._pendingFile;
+  const pendingUrl  = row?.dataset?.pendingPhoto;
+  if (pendingFile) {
+    notify('⏳ 正在上傳照片...');
+    const uploadedUrl = await uploadPhotoToSupabase(pendingFile, id);
+    if (uploadedUrl) {
+      p.photo = uploadedUrl;
+    } else {
+      notify('⚠️ 照片上傳失敗，其他資料仍會儲存', true);
+    }
+    row._pendingFile = null;
+  } else if (pendingUrl) {
+    p.photo = pendingUrl;
+  }
+
   saveDB(); renderPlayerList(); updatePlayerDropdowns();
   notify('✅ 選手資料已更新：' + newName);
 }
