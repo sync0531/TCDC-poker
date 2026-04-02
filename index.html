@@ -926,8 +926,8 @@ CREATE POLICY "Public write" ON poker_data FOR ALL USING (true);</div>
 <script>
 // ══ Supabase 設定（在此填入，所有裝置共用）══
 // 填入後上傳到 GitHub，任何人開啟網頁都能自動同步
-const SUPABASE_URL = ''; // 例：https://bjuauzobuavhjowvrxrx.supabase.co
-const SUPABASE_KEY = ''; // 例：sb_publishable_xxxxx...
+const SUPABASE_URL = 'https://bjuauzobuavhjowvrxrx.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJqdWF1em9idWF2aGpvd3ZyeHJ4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzQ5OTIzMTAsImV4cCI6MjA5MDU2ODMxMH0.rT55JhEzg8ehPXcNTg2i6U_-HZdOOB_n1W7wDaNYAPI';
 
 let DB = { players: [], games: [], config: { minGames: 3, photoRank: 3 }, sbUrl: '', sbKey: '', sheetUrl: '' };
 let lang = 'zh';
