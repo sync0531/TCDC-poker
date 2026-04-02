@@ -1053,9 +1053,13 @@ function syncToSheet() {
     const rebuyRate = pGames.length>0 ? totalRebuys/pGames.length*100 : 0;
     const huRate = (huWins+huLosses)>0 ? huWins/(huWins+huLosses)*100 : 0;
     const photo  = first+second+third;
-    // 近期參賽率（以 game.id 為單位，避免同日多場重複）
-    const sortedGIds = [...games].sort((a,b)=>a.date.localeCompare(b.date)||(a.session||1)-(b.session||1)).map(g=>g.id);
-    const last6ids = sortedGIds.slice(-6);
+    // 近期參賽率：依賽季分組，取選手最新賽季的最後6場
+    const sortedGIds = [...games].sort((a,b)=>a.date.localeCompare(b.date)||(a.session||1)-(b.session||1));
+    const seasonMap = {};
+    sortedGIds.forEach(g => { if (!seasonMap[g.season]) seasonMap[g.season] = []; seasonMap[g.season].push(g.id); });
+    const playerSeasons = [...new Set(pGames.map(g=>g.season))].sort();
+    const latestSeason = playerSeasons[playerSeasons.length-1];
+    const last6ids = latestSeason ? (seasonMap[latestSeason]||[]).slice(-6) : [];
     const recentP = last6ids.filter(id=>pGames.some(g=>g.id===id)).length;
     const recentRate = last6ids.length ? recentP/last6ids.length*100 : 0;
     // MVP score
@@ -1933,12 +1937,40 @@ function computeStats(season) {
     });
   });
 
-  // 近期參賽率：取最後 6 場（以 game id 為單位）
-  const last6ids = allGameIds.slice(-6);
-  Object.values(stats).forEach(s => {
-    const participated = last6ids.filter(id => s.allGames.includes(id)).length;
-    s.recentRate = last6ids.length ? participated / last6ids.length : 0;
-  });
+  // 近期參賽率：各賽季各取最後6場，避免跨年度混算
+  // 若 season 為 'all'，依各賽季分別取最後6場再合併
+  if (season === 'all') {
+    // 依賽季分組，各取最後6場
+    const seasonMap = {};
+    sortedGames.forEach(g => {
+      if (!seasonMap[g.season]) seasonMap[g.season] = [];
+      seasonMap[g.season].push(g.id);
+    });
+    // 每個賽季的最後6場 id 集合
+    const last6PerSeason = {};
+    Object.entries(seasonMap).forEach(([s, ids]) => {
+      last6PerSeason[s] = ids.slice(-6);
+    });
+    // 計算每位選手：在其出賽的賽季中，各賽季近期6場的出席率，取最近賽季
+    Object.values(stats).forEach(s => {
+      // 找該選手有出賽的賽季（依時間排序，取最新賽季）
+      const playerSeasons = [...new Set(
+        sortedGames.filter(g => s.allGames.includes(g.id)).map(g => g.season)
+      )].sort();
+      if (!playerSeasons.length) { s.recentRate = 0; return; }
+      const latestSeason = playerSeasons[playerSeasons.length - 1];
+      const last6 = last6PerSeason[latestSeason] || [];
+      const participated = last6.filter(id => s.allGames.includes(id)).length;
+      s.recentRate = last6.length ? participated / last6.length : 0;
+    });
+  } else {
+    // 單一賽季：直接取最後6場
+    const last6ids = allGameIds.slice(-6);
+    Object.values(stats).forEach(s => {
+      const participated = last6ids.filter(id => s.allGames.includes(id)).length;
+      s.recentRate = last6ids.length ? participated / last6ids.length : 0;
+    });
+  }
   const qualified = Object.values(stats).filter(s => s.games >= 1);
   const maxRankPts = Math.max(...qualified.map(s => s.rankPts), 1);
   qualified.forEach(s => {
@@ -2163,9 +2195,9 @@ function renderLeaderboard() {
   if (lbView === 'male') arr = arr.filter(s => s.gender === 'M');
   if (lbView === 'female') arr = arr.filter(s => s.gender === 'F');
 
-  // 先計算各獎項的 award2ndCount（與 renderAwards 共用邏輯）
+  // 先計算各獎項的 award2ndCount（只計正面獎項）
   arr.forEach(s => { s._award2ndCount = 0; });
-  AWARD_DEFS.filter(d => !d.special).forEach(def => {
+  AWARD_DEFS.filter(d => !d.special && d.positive && !d.excludeTopdog2).forEach(def => {
     const sorted = def.fn([...arr]);
     if (sorted.length < 2) return;
     const top1Val = def.fmt(sorted[0]);
@@ -2233,26 +2265,26 @@ function renderLeaderboard() {
 }
 
 const AWARD_DEFS = [
-  { key:'mvp',     icon:'🏆', zh:'MVP', en:'MVP',                    desc:'綜合積分第一名', fn:s=>s.sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
-  { key:'mvpF',    icon:'👸', zh:'女子MVP', en:'Female MVP',         desc:'女子綜合積分第一', fn:s=>s.filter(x=>x.gender==='F').sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
-  { key:'mvpM',    icon:'👑', zh:'男子MVP', en:'Male MVP',           desc:'男子綜合積分第一', fn:s=>s.filter(x=>x.gender==='M').sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
-  { key:'bestF',   icon:'👸', zh:'最佳女牌手', en:'Best Female',     desc:'女玩家第一名最多次', fn:s=>s.filter(x=>x.gender==='F').sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次冠軍` },
-  { key:'bestM',   icon:'👑', zh:'最佳男牌手', en:'Best Male',       desc:'男玩家第一名最多次', fn:s=>s.filter(x=>x.gender==='M').sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次冠軍` },
-  { key:'prize',   icon:'💰', zh:'獎金王', en:'Prize King',          desc:'累計獎金最多', fn:s=>s.sort((a,b)=>b.totalPrize-a.totalPrize), fmt:s=>`$${s.totalPrize.toLocaleString()}` },
-  { key:'netwin',  icon:'💵', zh:'尻王', en:'Net Win King',          desc:'累計獎金 - 總投入最多', fn:s=>s.sort((a,b)=>b.net-a.net), fmt:s=>`$${s.net.toLocaleString()}` },
-  { key:'roi',     icon:'📈', zh:'投資王', en:'ROI King',            desc:'ROI 投入最少賺最多%', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>b.roi-a.roi), fmt:s=>`${s.roi.toFixed(1)}%` },
+  { key:'mvp',     icon:'🏆', zh:'MVP', en:'MVP',                    desc:'綜合積分第一名', positive:true, fn:s=>s.sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
+  { key:'mvpF',    icon:'👸', zh:'女子MVP', en:'Female MVP',         desc:'女子綜合積分第一', positive:true, fn:s=>s.filter(x=>x.gender==='F').sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
+  { key:'mvpM',    icon:'👑', zh:'男子MVP', en:'Male MVP',           desc:'男子綜合積分第一', positive:true, fn:s=>s.filter(x=>x.gender==='M').sort((a,b)=>b.mvpScore-a.mvpScore), fmt:s=>`${s.mvpScore.toFixed(1)} pts` },
+  { key:'bestF',   icon:'👸', zh:'最佳女牌手', en:'Best Female',     desc:'女玩家第一名最多次', positive:true, fn:s=>s.filter(x=>x.gender==='F').sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次冠軍` },
+  { key:'bestM',   icon:'👑', zh:'最佳男牌手', en:'Best Male',       desc:'男玩家第一名最多次', positive:true, fn:s=>s.filter(x=>x.gender==='M').sort((a,b)=>b.first-a.first), fmt:s=>`${s.first} 次冠軍` },
+  { key:'prize',   icon:'💰', zh:'獎金王', en:'Prize King',          desc:'累計獎金最多', positive:true, fn:s=>s.sort((a,b)=>b.totalPrize-a.totalPrize), fmt:s=>`$${s.totalPrize.toLocaleString()}` },
+  { key:'netwin',  icon:'💵', zh:'尻王', en:'Net Win King',          desc:'累計獎金 - 總投入最多', positive:true, fn:s=>s.sort((a,b)=>b.net-a.net), fmt:s=>`$${s.net.toLocaleString()}` },
+  { key:'roi',     icon:'📈', zh:'投資王', en:'ROI King',            desc:'ROI 投入最少賺最多%', positive:true, req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>b.roi-a.roi), fmt:s=>`${s.roi.toFixed(1)}%` },
   { key:'atm',     icon:'🏧', zh:'ATM贊助王', en:'ATM King',         desc:'總損失最多', fn:s=>s.sort((a,b)=>a.net-b.net), fmt:s=>`$${Math.abs(s.net).toLocaleString()} 損失` },
-  { key:'attend',  icon:'🎓', zh:'有你有我獎', en:'Full Attendance', desc:'出席率最高', req:true, fn:s=>s.sort((a,b)=>b.recentRate-a.recentRate), fmt:s=>`${(s.recentRate*100).toFixed(0)}%` },
-  { key:'photo',   icon:'📸', zh:'拍照王', en:'Photo King',          desc:'前三名拍照總次數最多', fn:s=>s.sort((a,b)=>b.photoCount-a.photoCount), fmt:s=>`${s.photoCount} 次` },
+  { key:'attend',  icon:'🎓', zh:'有你有我獎', en:'Full Attendance', desc:'出席率最高', positive:true, req:true, fn:s=>s.sort((a,b)=>b.recentRate-a.recentRate), fmt:s=>`${(s.recentRate*100).toFixed(0)}%` },
+  { key:'photo',   icon:'📸', zh:'拍照王', en:'Photo King',          desc:'前三名拍照總次數最多', positive:true, fn:s=>s.sort((a,b)=>b.photoCount-a.photoCount), fmt:s=>`${s.photoCount} 次` },
   { key:'nophoto', icon:'🪞', zh:'藏鏡人', en:'Shadow Man',          desc:'一定場次以上拍照最少', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>a.photoCount-b.photoCount), fmt:s=>`${s.photoCount} 次` },
   { key:'peace',   icon:'🕊️', zh:'和平大使', en:'Peacemaker',        desc:'正負獎項最少（一定出席率）', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>a.first-b.first), fmt:s=>`低調型選手` },
   { key:'tight',   icon:'🦪', zh:'臭緊B', en:'Tight King',           desc:'一定場次以上重買率最低', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>a.rebuyRate-b.rebuyRate), fmt:s=>`${(s.rebuyRate*100).toFixed(1)}% 重買率` },
   { key:'fish',    icon:'🐟', zh:'魚王', en:'Fish King',             desc:'每場平均重買率最高', req:true, fn:s=>s.filter(x=>x.games>=3).sort((a,b)=>b.rebuyRate-a.rebuyRate), fmt:s=>`${(s.rebuyRate*100).toFixed(1)}% 重買率` },
-  { key:'pkking',  icon:'🦍', zh:'PK King', en:'PK King',            desc:'第1名/(第1名+第2名) 比率最高 (需≥3場HU)', fn:s=>s.filter(x=>(x.first+x.second)>=3).sort((a,b)=>(b.first/(b.first+b.second||1))-(a.first/(a.first+a.second||1))), fmt:s=>`${(s.first/(s.first+s.second)*100).toFixed(0)}% (${s.first}次1st/${s.first+s.second}場HU)` },
+  { key:'pkking',  icon:'🦍', zh:'PK King', en:'PK King',            desc:'第1名/(第1名+第2名) 比率最高 (需≥3場HU)', positive:true, fn:s=>s.filter(x=>(x.first+x.second)>=3).sort((a,b)=>(b.first/(b.first+b.second||1))-(a.first/(a.first+a.second||1))), fmt:s=>`${(s.first/(s.first+s.second)*100).toFixed(0)}% (${s.first}次1st/${s.first+s.second}場HU)` },
   { key:'lemon',   icon:'🍐', zh:'孔融讓梨', en:'Humble One',        desc:'第2名/(第1名+第2名) 比率最高 (需≥3場HU且至少1次第2名)', fn:s=>s.filter(x=>(x.first+x.second)>=3 && x.second>0).sort((a,b)=>(b.second/(b.first+b.second||1))-(a.second/(a.first+a.second||1))), fmt:s=>`${(s.second/(s.first+s.second)*100).toFixed(0)}% (${s.second}次2nd/${s.first+s.second}場HU)` },
-  { key:'oneshot', icon:'🔫', zh:'一發入魂', en:'One Shot',          desc:'拿冠軍當場零重買的次數最多', fn:s=>s.filter(x=>x.oneShotCount>0).sort((a,b)=>b.oneShotCount-a.oneShotCount), fmt:s=>`${s.oneShotCount} 次` },
+  { key:'oneshot', icon:'🔫', zh:'一發入魂', en:'One Shot',          desc:'拿冠軍當場零重買的次數最多', positive:true, fn:s=>s.filter(x=>x.oneShotCount>0).sort((a,b)=>b.oneShotCount-a.oneShotCount), fmt:s=>`${s.oneShotCount} 次` },
   { key:'topdog2', icon:'✌️', zh:'最強老二', en:'Best 2nd',          desc:'在全部獎項中拿到第2名次數最多', special:'allAward2nd', fmt:s=>`${s._award2ndCount||0} 個獎項第2名` },
-  { key:'mama',    icon:'👩‍🦰', zh:'愛心媽媽', en:'Mama Love',        desc:'發牌次數最多（手動記錄）', fn:s=>s.sort((a,b)=>b.dealt-a.dealt), fmt:s=>`${s.dealt} 次發牌` },
+  { key:'mama',    icon:'👩‍🦰', zh:'愛心媽媽', en:'Mama Love',        desc:'發牌次數最多（手動記錄）', positive:true, fn:s=>s.sort((a,b)=>b.dealt-a.dealt), fmt:s=>`${s.dealt} 次發牌`, excludeTopdog2:true },
   { key:'bubble',  icon:'🦖', zh:'泡泡龍', en:'Bubble',              desc:'正泡(第四名)次數最多', fn:s=>s.sort((a,b)=>b.fourth-a.fourth), fmt:s=>`${s.fourth} 次正泡` },
   { key:'uphead',  icon:'🤯', zh:'上頭王', en:'Tilt King',           desc:'單場最高重買次數最多', fn:s=>s.sort((a,b)=>b.maxSingleRebuys-a.maxSingleRebuys), fmt:s=>`單場最多 ${s.maxSingleRebuys} 次重買` },
 ];
@@ -2264,10 +2296,10 @@ function renderAwards() {
   const minGames = DB.config?.minGames || 3;
 
   // 先計算每位選手在各獎項中的第2名次數（用於最強老二）
-  // 排除 topdog2 本身和特殊獎項，避免循環
+  // 只計算正面獎項（positive:true），排除負面/中性獎項
   const award2ndCount = {};
   arr.forEach(s => { award2ndCount[s.id] = 0; s._award2ndCount = 0; });
-  AWARD_DEFS.filter(d => !d.special).forEach(def => {
+  AWARD_DEFS.filter(d => !d.special && d.positive && !d.excludeTopdog2).forEach(def => {
     const sorted = def.fn([...arr]);
     if (sorted.length < 2) return;
     const qualified = !def.req || (sorted[0] && sorted[0].games >= minGames);
