@@ -544,7 +544,8 @@ select option { background: var(--bg3); }
       <p id="header-sub">師大德州撲克錦標賽統計系統</p>
     </div>
   </div>
-  <div class="header-right">
+  <div class="header-right" style="display:flex;align-items:center;gap:14px;">
+    <span id="sync-indicator" style="font-family:'Barlow Condensed',sans-serif;font-size:11px;letter-spacing:1px;color:var(--text3);">☁️ 連線中...</span>
     <button class="lang-btn" onclick="toggleLang()">EN / 中文</button>
   </div>
 </header>
@@ -839,7 +840,6 @@ select option { background: var(--bg3); }
           <input type="text" id="sb-key" placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." style="font-family:monospace;font-size:11px;">
           <button class="btn" onclick="saveSupabaseConfig()">儲存</button>
           <button class="btn outline" onclick="testSupabase()">測試</button>
-          <button class="btn secondary" onclick="manualSync()">🔄 立即同步</button>
         </div>
       </div>
 
@@ -908,12 +908,10 @@ CREATE POLICY "Public write" ON poker_data FOR ALL USING (true);</div>
       </div>
       <div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:8px;">匯入</div>
       <div style="display:flex;gap:10px;flex-wrap:wrap;">
-        <button class="btn outline" onclick="importData()">📤 匯入 JSON（本機）</button>
-        <button class="btn secondary" onclick="importAndSync()">📤☁️ 匯入 JSON 並同步到 Sheets</button>
+        <button class="btn outline" onclick="importData()">📤 匯入 JSON</button>
         <input type="file" id="import-file" accept=".json" style="display:none" onchange="doImport(event)">
-        <input type="file" id="import-sync-file" accept=".json" style="display:none" onchange="doImportAndSync(event)">
       </div>
-      <div style="font-size:12px;color:var(--text3);margin-top:8px;">「匯入並同步」需先設定 Google Sheets URL，匯入後會自動將所有資料推送到雲端。</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:8px;">匯入後資料會自動同步到雲端資料庫，所有裝置即時更新。</div>
     </div>
     <div class="config-block" style="border-color:rgba(200,16,46,0.3);">
       <h3 style="color:var(--red)">🧪 測試資料</h3>
@@ -937,23 +935,27 @@ let lbView = 'all';
 let lbSort = { key: 'mvpScore', dir: -1 }; // dir: -1=降冪, 1=升冪
 
 function loadDB() {
+  // 先從 localStorage 快取載入（讓頁面快速顯示）
   const raw = localStorage.getItem('pokerDB');
   if (raw) { try { DB = { ...DB, ...JSON.parse(raw) }; } catch(e) {} }
   if (!DB.players) DB.players = [];
   if (!DB.games) DB.games = [];
   if (!DB.config) DB.config = { minGames: 3, photoRank: 3 };
-  // 常數設定優先（確保任何裝置都能同步）
+  // 常數設定優先
   if (SUPABASE_URL) DB.sbUrl = SUPABASE_URL;
   if (SUPABASE_KEY) DB.sbKey = SUPABASE_KEY;
 }
 function saveDB() {
-  localStorage.setItem('pokerDB', JSON.stringify(DB));
-  if (DB.sbUrl && DB.sbKey) syncToSupabase();
+  localStorage.setItem('pokerDB', JSON.stringify(DB)); // 快取
+  syncToSupabase(); // 主要儲存
 }
-function syncToSupabase() {
+function syncToSupabase(silent) {
   const url = DB.sbUrl || SUPABASE_URL;
   const key = DB.sbKey || SUPABASE_KEY;
-  if (!url || !key) return;
+  if (!url || !key) {
+    if (!silent) notify('⚠️ 尚未設定 Supabase，資料僅存在本機', true);
+    return;
+  }
   fetch(`${url}/rest/v1/poker_data?id=eq.main`, {
     method: 'PATCH',
     headers: {
@@ -963,7 +965,20 @@ function syncToSupabase() {
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify({ data: DB, updated_at: new Date().toISOString() })
-  }).catch(() => {});
+  }).then(r => {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    updateSyncIndicator(true);
+  }).catch(err => {
+    updateSyncIndicator(false);
+    console.warn('Supabase sync failed:', err);
+  });
+}
+function updateSyncIndicator(ok) {
+  const el = document.getElementById('sync-indicator');
+  if (!el) return;
+  const now = new Date().toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  el.textContent = ok ? '☁️ 已同步 ' + now : '⚠️ 同步失敗';
+  el.style.color = ok ? '#2ECC71' : '#E74C3C';
 }
 // 保留舊名稱供相容
 function syncToSheet() {
@@ -1363,8 +1378,9 @@ function syncFromSupabase(callback) {
       const prevUrl = DB.sbUrl || SUPABASE_URL;
       const prevKey = DB.sbKey || SUPABASE_KEY;
       DB = { ...record, sbUrl: prevUrl, sbKey: prevKey };
-      localStorage.setItem('pokerDB', JSON.stringify(DB));
+      localStorage.setItem('pokerDB', JSON.stringify(DB)); // 更新快取
       renderAll();
+      updateSyncIndicator(true);
       if(callback) callback(true);
     })
     .catch(err => { if(callback) callback(false, err.message || '網路錯誤'); });
@@ -2441,19 +2457,7 @@ CREATE POLICY "Public read" ON poker_data FOR SELECT USING (true);
 CREATE POLICY "Public write" ON poker_data FOR ALL USING (true);`;
   navigator.clipboard.writeText(sql).then(() => notify('✅ SQL 已複製！')).catch(() => notify('複製失敗，請手動複製', true));
 }
-function manualSync() {
-  const url = document.getElementById('sb-url')?.value.trim() || DB.sbUrl;
-  const key = document.getElementById('sb-key')?.value.trim() || DB.sbKey;
-  if (!url) return notify('請先填入 Supabase Project URL', true);
-  if (!key) return notify('請先填入 Anon Key', true);
-  DB.sbUrl = url.replace(/\/$/, '');
-  DB.sbKey = key;
-  notify('🔄 同步中...');
-  syncFromSupabase((ok, msg) => {
-    if (ok) { notify('✅ 同步成功！資料已更新'); loadConfig(); }
-    else notify('❌ 同步失敗：' + (msg||''), true);
-  });
-}
+function manualSync() {} // 已由自動同步取代
 function testSheet() { testSupabase(); }
 function testSupabase() {
   const url = document.getElementById('sb-url')?.value.trim() || DB.sbUrl;
@@ -2492,62 +2496,62 @@ function exportCSV() {
 function importData() { document.getElementById('import-file').click(); }
 function doImport(e) {
   const file = e.target.files[0]; if (!file) return;
+  e.target.value = ''; // 允許重複選同一檔案
   const reader = new FileReader();
   reader.onload = ev => {
     try {
       const data = JSON.parse(ev.target.result);
-      if (!confirm('確定要匯入？現有資料將被覆蓋！')) return;
-      // 保留目前的 sheetUrl
-      const prevSbUrl = DB.sbUrl; const prevSbKey = DB.sbKey;
-      DB = data;
-      DB.sbUrl = prevSbUrl || data.sbUrl || '';
-      DB.sbKey = prevSbKey || data.sbKey || '';
-      saveDB(); renderAll(); notify('資料匯入成功！');
-    } catch(err) { notify('匯入失敗：格式錯誤', true); }
-  };
-  reader.readAsText(file);
-}
+      const gameCount   = data.games?.length || 0;
+      const playerCount = data.players?.length || 0;
+      if (!confirm(`確定匯入 ${playerCount} 位選手、${gameCount} 場比賽的資料？
+現有資料將被覆蓋，並自動同步到雲端。`)) return;
 
-function importAndSync() {
-  if (!DB.sheetUrl) {
-    const url = document.getElementById('sheet-url').value.trim();
-    if (!url) return notify('請先設定並連結 Google Sheets URL', true);
-    DB.sheetUrl = url;
-  }
-  document.getElementById('import-sync-file').click();
-}
+      // 保留本機 Supabase 設定
+      const prevSbUrl = DB.sbUrl || SUPABASE_URL;
+      const prevSbKey = DB.sbKey || SUPABASE_KEY;
+      DB = { ...data, sbUrl: prevSbUrl, sbKey: prevSbKey };
 
-function doImportAndSync(e) {
-  const file = e.target.files[0]; if (!file) return;
-  // Reset so same file can be re-selected
-  e.target.value = '';
-  const reader = new FileReader();
-  reader.onload = ev => {
-    try {
-      const data = JSON.parse(ev.target.result);
-      if (!confirm(`確定要匯入 ${data.games?.length||0} 場比賽、${data.players?.length||0} 位選手的資料，並同步到 Google Sheets？現有資料將被覆蓋！`)) return;
-
-      const sheetUrl = DB.sheetUrl;
-      DB = data;
-      DB.sheetUrl = sheetUrl;
-
-      // 先存 localStorage
+      // 存快取
       localStorage.setItem('pokerDB', JSON.stringify(DB));
       renderAll();
-      notify('⏳ 資料匯入成功，正在同步到雲端...');
-      pushAllToSheet();
+      notify('⏳ 匯入成功（' + playerCount + ' 位選手 / ' + gameCount + ' 場比賽），正在同步到雲端...');
+
+      // 推送到 Supabase
+      const url = prevSbUrl;
+      const key = prevSbKey;
+      if (!url || !key) {
+        notify('⚠️ 資料已匯入本機，但未設定 Supabase，無法同步到雲端', true);
+        return;
+      }
+      fetch(`${url}/rest/v1/poker_data?id=eq.main`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': key,
+          'Authorization': 'Bearer ' + key,
+          'Prefer': 'return=minimal'
+        },
+        body: JSON.stringify({ data: DB, updated_at: new Date().toISOString() })
+      }).then(r => {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        notify('✅ 匯入並同步完成！所有裝置即時更新。');
+        updateSyncIndicator(true);
+      }).catch(err => {
+        notify('⚠️ 資料已匯入本機，但雲端同步失敗：' + err.message, true);
+        updateSyncIndicator(false);
+      });
+
     } catch(err) {
-      notify('匯入失敗：' + (err.message || '格式錯誤'), true);
+      notify('匯入失敗：' + (err.message || 'JSON 格式錯誤'), true);
     }
   };
   reader.readAsText(file);
 }
 
-function pushAllToSheet() {
-  if (!DB.sbUrl || !DB.sbKey) return notify('請先設定 Supabase URL 和 Key', true);
-  syncToSupabase();
-  setTimeout(() => notify('✅ 已推送到雲端 Supabase！'), 1500);
-}
+// 移除舊函數（保留空殼避免 HTML 引用報錯）
+function importAndSync() { importData(); }
+function doImportAndSync(e) {}
+function pushAllToSheet() {}
 
 function mkTable(headers, rows) {
   return `<table><thead><tr>${headers.map(h=>`<th>${h}</th>`).join('')}</tr></thead><tbody>` + rows.map(r=>`<tr>${r.map(c=>`<td>${c}</td>`).join('')}</tr>`).join('') + '</tbody></table>';
@@ -2720,26 +2724,29 @@ window.onload = () => {
   loadDB();
   document.getElementById('game-date').value = new Date().toISOString().slice(0,10);
   loadConfig(); renderAll();
-  // 若有設定 Supabase，自動從雲端拉最新資料
-  if (DB.sbUrl && DB.sbKey) {
-    notify('🔄 正在從雲端同步資料...');
+  // 開啟時一定從 Supabase 拉最新資料（主要資料來源）
+  const _sbUrl = DB.sbUrl || SUPABASE_URL;
+  const _sbKey = DB.sbKey || SUPABASE_KEY;
+  if (_sbUrl && _sbKey) {
+    notify('🔄 載入雲端資料中...');
     syncFromSupabase((ok, msg) => {
-      if (ok) notify('✅ 已載入最新資料！');
-      else notify('⚠️ 無法同步：' + (msg||''), true);
-    });
-  }
-  // 每 30 秒自動輪詢一次（靜默）
-  setInterval(() => {
-    if (!DB.sbUrl || !DB.sbKey) return;
-    syncFromSupabase((ok) => {
       if (ok) {
-        const label = document.getElementById('last-update-label');
-        if (label) {
-          const now = new Date();
-          label.textContent = '上次同步：' + now.toLocaleTimeString('zh-TW', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
-        }
+        notify('✅ 已載入最新資料！');
+        updateSyncIndicator(true);
+      } else {
+        notify('⚠️ 雲端無法連線，顯示本機快取：' + (msg||''), true);
+        updateSyncIndicator(false);
       }
     });
+  } else {
+    notify('⚠️ 未設定 Supabase，目前只使用本機資料', true);
+  }
+  // 每 30 秒自動輪詢（靜默更新）
+  setInterval(() => {
+    const url = DB.sbUrl || SUPABASE_URL;
+    const key = DB.sbKey || SUPABASE_KEY;
+    if (!url || !key) return;
+    syncFromSupabase((ok) => { updateSyncIndicator(ok); });
   }, 30000);
   if (DB.players.length === 0) {
     // 10 sample players
